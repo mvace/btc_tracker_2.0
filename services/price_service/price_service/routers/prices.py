@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from price_service.models import HourlyBitcoinPrice, HourlyBitcoinPriceResponse
+from price_service.models import HourlyBitcoinPrice
+from price_service.schemas import HourlyBitcoinPriceSchema
 from price_service.database import SessionLocal
 from typing import List
 
@@ -15,7 +16,7 @@ async def get_db():
 
 
 # Get all Bitcoin prices
-@router.get("/", response_model=List[HourlyBitcoinPriceResponse])
+@router.get("/", response_model=List[HourlyBitcoinPriceSchema])
 async def get_all_prices(db: AsyncSession = Depends(get_db)):
     """Returns the full list of hourly Bitcoin prices from the database."""
     result = await db.execute(select(HourlyBitcoinPrice))
@@ -26,7 +27,7 @@ async def get_all_prices(db: AsyncSession = Depends(get_db)):
 
 
 # Get a specific Bitcoin price by Unix timestamp
-@router.get("/{unix_timestamp}", response_model=HourlyBitcoinPriceResponse)
+@router.get("/{unix_timestamp}", response_model=HourlyBitcoinPriceSchema)
 async def get_price_by_timestamp(
     unix_timestamp: int, db: AsyncSession = Depends(get_db)
 ):

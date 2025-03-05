@@ -16,18 +16,3 @@ class HourlyBitcoinPrice(Base):
     close = Column(Float, nullable=False)
     volumefrom = Column(Float, nullable=False)
     volumeto = Column(Float, nullable=False)
-
-
-# Define a Pydantic model for responses
-class HourlyBitcoinPriceResponse(BaseModel):
-    unix_timestamp: int
-    price: float
-    high: float
-    low: float
-    open: float
-    close: float
-    volumefrom: float
-    volumeto: float
-
-    class Config:
-        orm_mode = True  # Enables compatibility with SQLAlchemy
