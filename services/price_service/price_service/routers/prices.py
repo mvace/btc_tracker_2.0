@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from price_service.models import HourlyBitcoinPrice
-from price_service.schemas import HourlyBitcoinPriceSchema
-from price_service.database import SessionLocal
+from price_service.price_service.models import HourlyBitcoinPrice
+from price_service.price_service.schemas import HourlyBitcoinPriceSchema
+from price_service.price_service.database import SessionLocal
 from typing import List
 
 router = APIRouter()

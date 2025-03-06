@@ -2,9 +2,10 @@ from sqlalchemy import create_engine
 from alembic import context
 from price_service.database import DATABASE_URL
 from price_service.models import Base
+from price_service.settings import settings
 
 # Ensure Alembic uses a synchronous database connection
-DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg", "postgresql")
+DATABASE_URL = settings.DATABASE_URL.replace("postgresql+asyncpg", "postgresql")
 
 # Create a synchronous engine
 engine = create_engine(DATABASE_URL)

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from price_service.routers import prices
+from routers import prices
 
 
 app = FastAPI(title="Prices Microservice")

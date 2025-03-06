@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, BigInteger, Float
-from price_service.database import Base
+from price_service.price_service.database import Base
 from pydantic import BaseModel
 from typing import List
 
@@ -9,7 +9,6 @@ class HourlyBitcoinPrice(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     unix_timestamp = Column(BigInteger, index=True, nullable=False)
-    price = Column(Float, nullable=False)
     high = Column(Float, nullable=False)
     low = Column(Float, nullable=False)
     open = Column(Float, nullable=False)
