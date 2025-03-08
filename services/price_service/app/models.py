@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, BigInteger, Float
-from price_service.price_service.database import Base
+from app.database import Base
 from pydantic import BaseModel
 from typing import List
 
