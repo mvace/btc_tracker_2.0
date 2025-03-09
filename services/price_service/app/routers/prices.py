@@ -1,9 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi_pagination import Page, add_pagination
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models import HourlyBitcoinPrice
 from app.schemas import HourlyBitcoinPriceSchema
 from app.database import SessionLocal
+from app.utils.timestamp import round_timestamp_to_nearest_hour
 from typing import List
 
 router = APIRouter()
@@ -16,14 +20,15 @@ async def get_db():
 
 
 # Get all Bitcoin prices
-@router.get("/", response_model=List[HourlyBitcoinPriceSchema])
+@router.get("/", response_model=Page[HourlyBitcoinPriceSchema])
 async def get_all_prices(db: AsyncSession = Depends(get_db)):
-    """Returns the full list of hourly Bitcoin prices from the database."""
-    result = await db.execute(select(HourlyBitcoinPrice))
-    if result is None:
-        raise HTTPException(status_code=404, detail="No records found")
-    prices = result.scalars().all()
-    return prices
+    """Returns paginated hourly Bitcoin prices sorted by timestamp DESC."""
+    return await paginate(
+        db, select(HourlyBitcoinPrice).order_by(desc(HourlyBitcoinPrice.unix_timestamp))
+    )
+
+
+add_pagination(router)  # Enables pagination globally
 
 
 # Get a specific Bitcoin price by Unix timestamp
@@ -31,10 +36,12 @@ async def get_all_prices(db: AsyncSession = Depends(get_db)):
 async def get_price_by_timestamp(
     unix_timestamp: int, db: AsyncSession = Depends(get_db)
 ):
-    """Returns the Bitcoin price for a specific Unix timestamp."""
+    """Rounds the timestamp to the nearest full hour and returns the Bitcoin price for a the Unix timestamp of that nearest hour."""
+    rounded_timestamp = round_timestamp_to_nearest_hour(unix_timestamp)
+
     result = await db.execute(
         select(HourlyBitcoinPrice).where(
-            HourlyBitcoinPrice.unix_timestamp == unix_timestamp
+            HourlyBitcoinPrice.unix_timestamp == rounded_timestamp
         )
     )
     price = result.scalars().first()
