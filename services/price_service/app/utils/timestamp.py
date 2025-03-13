@@ -21,24 +21,15 @@ def round_timestamp_to_nearest_hour(unix_timestamp: int) -> int:
         return unix_timestamp + (SECONDS_IN_HOUR - remainder)
 
 
-timestamps = [
-    1732641540,
-    1640483538,
-    1641115923,
-    1674038743,
-    1692733399,
-    1733220582,
-    1736957497,
-    1739010676,
-    1631491355,
-    1722381638,
-]
+def round_timestamp_down_to_hour(unix_timestamp: int) -> int:
+    """
+    Rounds a given Unix timestamp down to the nearest full hour.
 
-for ts in timestamps:
-    original_datetime = datetime.datetime.utcfromtimestamp(ts)
-    rounded_ts = round_timestamp_to_nearest_hour(ts)
-    rounded_datetime = datetime.datetime.utcfromtimestamp(rounded_ts)
+    Args:
+        unix_timestamp (int): The Unix timestamp (epoch) to round.
 
-    print(
-        f"RoundedTS: {rounded_ts} -> Original: {original_datetime} -> Rounded: {rounded_datetime}"
-    )
+    Returns:
+        int: The Unix timestamp rounded down to the nearest full hour.
+    """
+    SECONDS_IN_HOUR = 3600
+    return unix_timestamp - (unix_timestamp % SECONDS_IN_HOUR)
