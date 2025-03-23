@@ -6,17 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models import HourlyBitcoinPrice
 from app.schemas import HourlyBitcoinPriceSchema
-from app.database import SessionLocal
+from app.database import get_db
 from app.utils.timestamp import round_timestamp_to_nearest_hour
-from typing import List
+
 
 router = APIRouter()
-
-
-# Dependency to get DB session
-async def get_db():
-    async with SessionLocal() as session:
-        yield session
 
 
 # Get all Bitcoin prices
