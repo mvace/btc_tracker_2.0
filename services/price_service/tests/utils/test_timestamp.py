@@ -29,8 +29,8 @@ def test_round_timestamp_to_nearest_hour_exact_hour():
 
 
 def test_round_timestamp_down_to_hour_exact():
-    # Sunday 23. March 2025 15:46:37
-    ts = 1742744797
+    # Sunday 23. March 2025 15:00:00
+    ts = 1742742000
     assert (
         round_timestamp_down_to_hour(ts) == 1742742000
     )  # Sunday 23. March 2025 15:00:00

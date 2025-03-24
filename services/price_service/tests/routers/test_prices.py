@@ -32,8 +32,8 @@ async def test_get_data_by_timestamp_success(async_client, db_session):
 async def test_get_data_by_timestamp_not_found(async_client):
     nonexistent_timestamp = 1117062000
     response = await async_client.get(f"/prices/{nonexistent_timestamp}")
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Price record not found"
+    assert response.status_code == 400
+    assert "Timestamp out of valid range." in response.json()["detail"]
 
 
 @pytest.mark.anyio
@@ -68,3 +68,19 @@ async def test_get_data_by_timestamp_rounds_to_existing(async_client, db_session
     response = await async_client.get(f"/prices/{nearby_ts}")
     assert response.status_code == 200
     assert response.json()["unix_timestamp"] == original_ts
+
+
+@pytest.mark.anyio
+async def test_get_data_by_timestamp_below_min_timestamp(async_client):
+    nonexistent_timestamp = 0
+    response = await async_client.get(f"/prices/{nonexistent_timestamp}")
+    assert response.status_code == 400
+    assert "Timestamp out of valid range." in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_get_data_by_timestamp_above_max_timestamp(async_client):
+    nonexistent_timestamp = 9999999999
+    response = await async_client.get(f"/prices/{nonexistent_timestamp}")
+    assert response.status_code == 400
+    assert "Timestamp out of valid range." in response.json()["detail"]
