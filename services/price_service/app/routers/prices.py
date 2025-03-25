@@ -47,14 +47,20 @@ async def get_price_by_timestamp(
         .limit(1)
     )
 
-    min_ts = min_result.scalar() - 1800
-    max_ts = max_result.scalar() + 1799
+    # Fetch scalars BEFORE doing anything else
+    min_scalar = min_result.scalar_one_or_none()
+    max_scalar = max_result.scalar_one_or_none()
 
-    # Validate timestamp range
-    if min_ts is None or max_ts is None:
+    # Check for None
+    if min_scalar is None or max_scalar is None:
         raise HTTPException(
             status_code=500, detail="No price data available in the database."
         )
+
+    # Only now it’s safe to compute
+    min_ts = min_scalar - 1800
+    max_ts = max_scalar + 1799
+
     if not (min_ts <= rounded_timestamp <= max_ts):
         raise HTTPException(
             status_code=400,

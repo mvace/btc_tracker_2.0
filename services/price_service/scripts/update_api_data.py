@@ -34,7 +34,7 @@ async def save_hourly_bitcoin_data(session: AsyncSession, data: dict):
 
 async def fetch_and_save_bitcoin_price():
     async with SessionLocal() as session:
-        # Get the latest record from the database and calculate how many records is missing for the latest record till now
+        # Get the latest record from the database and calculate how many records is missing for the latest record till now and use it as limit parameter
         latest_record = await get_last_hourly_bitcoin_data()
         latest_record_ts = latest_record.unix_timestamp
         current_ts = int(time.time())
