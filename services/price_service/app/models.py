@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, BigInteger, Float
 from app.database import Base
 from pydantic import BaseModel
 from typing import List
+from sqlalchemy import CheckConstraint
 
 
 class HourlyBitcoinPrice(Base):
@@ -15,3 +16,6 @@ class HourlyBitcoinPrice(Base):
     close = Column(Float, nullable=False)
     volumefrom = Column(Float, nullable=False)
     volumeto = Column(Float, nullable=False)
+    __table_args__ = (
+        CheckConstraint("unix_timestamp >= 1279328400", name="valid_unix_timestamp"),
+    )
