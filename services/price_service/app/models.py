@@ -1,7 +1,5 @@
 from sqlalchemy import Column, Integer, BigInteger, Float
 from app.database import Base
-from pydantic import BaseModel
-from typing import List
 from sqlalchemy import CheckConstraint
 
 

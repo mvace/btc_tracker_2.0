@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 import datetime
 
 
@@ -10,16 +10,6 @@ class HourlyBitcoinPriceSchema(BaseModel):
     close: float
     volumefrom: float
     volumeto: float
-
-    # # Ensure timestamp is after 2022-01-01
-    # @validator("unix_timestamp")
-    # def validate_unix_timestamp(cls, value):
-    #     min_timestamp = int(datetime.datetime(2022, 1, 1).timestamp())
-    #     if value < min_timestamp:
-    #         raise ValueError(
-    #             f"Timestamp must be after {datetime.datetime(2022,1,1).isoformat()}"
-    #         )
-    #     return value
 
     class Config:
         orm_mode = True
