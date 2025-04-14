@@ -20,8 +20,8 @@ services:
       - .env
     ports:
       - "8000:8000"
-    volumes:
-      - .:/price_service
+    # volumes:
+    #   - .:/price_service
 
 volumes:
   postgres_data:

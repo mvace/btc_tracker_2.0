@@ -6,9 +6,9 @@ from sqlalchemy import create_engine
 
 # project_root = Path(__file__).resolve().parent.parent
 # sys.path.append(str(project_root))
-from core.settings import settings
+from core.settings import SYNC_DATABASE_URL, ASYNC_DATABASE_URL
 
-DATABASE_URL = settings.DATABASE_URL.replace("postgresql+asyncpg", "postgresql")
+DATABASE_URL = SYNC_DATABASE_URL
 
 # Define connection details (adjust these as needed)
 engine = create_engine(DATABASE_URL)

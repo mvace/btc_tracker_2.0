@@ -40,6 +40,7 @@ async def fetch_and_save_bitcoin_price():
         current_ts = int(time.time())
         current_ts_rounded_down = round_timestamp_down_to_hour(current_ts)
         limit = (current_ts - latest_record_ts) // 3600 - 1
+        print(f"LIMIT: {limit}")
 
         # Make the API request
         response = requests.get(
