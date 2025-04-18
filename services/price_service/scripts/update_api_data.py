@@ -7,6 +7,11 @@ from app.utils.timestamp import round_timestamp_down_to_hour
 import asyncio
 from datetime import datetime, timezone
 import time
+import aiohttp
+import sys
+
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 async def get_last_hourly_bitcoin_data():
@@ -34,28 +39,57 @@ async def save_hourly_bitcoin_data(session: AsyncSession, data: dict):
 
 async def fetch_and_save_bitcoin_price():
     async with SessionLocal() as session:
-        # Get the latest record from the database and calculate how many records is missing for the latest record till now and use it as limit parameter
         latest_record = await get_last_hourly_bitcoin_data()
         latest_record_ts = latest_record.unix_timestamp
         current_ts = int(time.time())
         current_ts_rounded_down = round_timestamp_down_to_hour(current_ts)
-        limit = (current_ts - latest_record_ts) // 3600 - 1
-        print(f"LIMIT: {limit}")
 
-        # Make the API request
-        response = requests.get(
-            "https://min-api.cryptocompare.com/data/v2/histohour",
-            params={"fsym": "BTC", "tsym": "USD", "limit": {limit}},
-            headers={"Content-type": "application/json; charset=UTF-8"},
-        )
+        total_hours = (current_ts_rounded_down - latest_record_ts) // 3600 - 1
+        print(f"Total hours missing: {total_hours}")
 
-        # Get the data in json format
-        json_response = response.json()
-        data = json_response["Data"]["Data"]
+        if total_hours <= 0:
+            print("No new data to fetch.")
+            return
 
-        # Loop over the records and save it to db
-        for record in data:
-            # Skip the latest input from "current hour" as the columns close, low and high might still change
+        url = "https://min-api.cryptocompare.com/data/v2/histohour"
+        all_data = []
+        limit_per_request = 2000
+        to_ts = current_ts_rounded_down
+
+        async with aiohttp.ClientSession() as http_session:
+            while total_hours > 0:
+                limit = min(limit_per_request, total_hours)
+                params = {"fsym": "BTC", "tsym": "USD", "limit": limit, "toTs": to_ts}
+
+                async with http_session.get(url, params=params) as response:
+                    if response.status != 200:
+                        raise Exception(
+                            f"API request failed with status {response.status}"
+                        )
+                    json_response = await response.json()
+
+                    batch = json_response["Data"]["Data"]
+
+                    # If the API returns fewer records than requested, stop
+                    if not batch:
+                        break
+
+                    # If we expect more data after this batch, exclude last (toTs is inclusive)
+                    if total_hours > limit:
+                        all_data = batch[:-1] + all_data
+                        earliest_ts = batch[0]["time"]
+                        to_ts = earliest_ts - 1
+                    else:
+                        all_data = batch + all_data
+                        break
+
+                    total_hours -= limit
+
+        # Final sort just in case
+        all_data.sort(key=lambda x: x["time"])
+
+        # Save to DB
+        for record in all_data:
             if record["time"] == current_ts_rounded_down:
                 continue
             await save_hourly_bitcoin_data(session=session, data=record)

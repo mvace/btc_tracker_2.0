@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from alembic import context
 from app.database import DATABASE_URL
-from app.models import Base
+from app.models import *
 from core.settings import settings
 
 # Ensure Alembic uses a synchronous database connection

@@ -7,7 +7,7 @@ class HourlyBitcoinPrice(Base):
     __tablename__ = "hourly_bitcoin_prices"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    unix_timestamp = Column(BigInteger, index=True, nullable=False)
+    unix_timestamp = Column(BigInteger, index=True, nullable=False, unique=True)
     high = Column(Float, nullable=False)
     low = Column(Float, nullable=False)
     open = Column(Float, nullable=False)
