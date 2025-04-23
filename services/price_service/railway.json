@@ -2,6 +2,7 @@
   "services": {
     "btc_price_service": {
       "start": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      "rootDirectory": "services/price_service",
       "envVars": {
         "PORT": {
           "value": "8000"
@@ -10,6 +11,7 @@
     },
     "btc_price_updater": {
       "start": "python -m scripts.update_api_data",
+      "rootDirectory": "services/price_service",
       "cronSchedule": "1 * * * *"
     }
   }
