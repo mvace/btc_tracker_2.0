@@ -1,9 +1,9 @@
 {
   "services": {
     "btc_price_service": {
-      "start": "uvicorn price_service.app.main:app --host 0.0.0.0 --port 8000",
-      "rootDirectory": "services",
-      "dockerfilePath": "services/Dockerfile",
+      "start": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      "rootDirectory": "services/price_service",
+      "dockerfilePath": "services/price_service/Dockerfile",
       "envVars": {
         "PORT": {
           "value": "8000"
@@ -11,9 +11,9 @@
       }
     },
     "btc_price_updater": {
-      "start": "python -m price_service.scripts.update_api_data",
-      "rootDirectory": "services",
-      "dockerfilePath": "services/Dockerfile",
+      "start": "python -m scripts.update_api_data",
+      "rootDirectory": "services/price_service",
+      "dockerfilePath": "services/price_service/Dockerfile",
       "cronSchedule": "1 * * * *"
     }
   }
