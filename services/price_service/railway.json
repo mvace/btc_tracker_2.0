@@ -3,6 +3,7 @@
     "btc_price_service": {
       "start": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
       "rootDirectory": "services/price_service",
+      "dockerfilePath": "services/price_service/Dockerfile",
       "envVars": {
         "PORT": {
           "value": "8000"
