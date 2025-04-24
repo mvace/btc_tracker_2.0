@@ -24,6 +24,16 @@ async def get_last_hourly_bitcoin_data():
 
 
 async def save_hourly_bitcoin_data(session: AsyncSession, data: dict):
+    # Check if record already exists
+    existing = await session.execute(
+        select(HourlyBitcoinPrice).where(
+            HourlyBitcoinPrice.unix_timestamp == data["time"]
+        )
+    )
+    if existing.scalar_one_or_none():
+        print(f"Skipping duplicate timestamp: {data['time']}")
+        return
+
     new_entry = HourlyBitcoinPrice(
         unix_timestamp=data["time"],
         high=data["high"],
