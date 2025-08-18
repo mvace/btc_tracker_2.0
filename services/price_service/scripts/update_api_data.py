@@ -17,7 +17,9 @@ if sys.platform.startswith("win"):
 async def get_last_hourly_bitcoin_data():
     async with SessionLocal() as session:
         result = await session.execute(
-            select(HourlyBitcoinPrice).order_by(HourlyBitcoinPrice.id.desc()).limit(1)
+            select(HourlyBitcoinPrice)
+            .order_by(HourlyBitcoinPrice.unix_timestamp.desc())
+            .limit(1)
         )
 
         return result.scalars().first()
@@ -43,6 +45,7 @@ async def save_hourly_bitcoin_data(session: AsyncSession, data: dict):
         volumefrom=data["volumefrom"],
         volumeto=data["volumeto"],
     )
+    print(f"Creating new entry for timestamp: {data['time']}")
     session.add(new_entry)
     await session.commit()
 
@@ -94,9 +97,6 @@ async def fetch_and_save_bitcoin_price():
                         break
 
                     total_hours -= limit
-
-        # Final sort just in case
-        all_data.sort(key=lambda x: x["time"])
 
         # Save to DB
         for record in all_data:
