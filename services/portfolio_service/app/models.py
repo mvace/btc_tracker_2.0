@@ -54,16 +54,6 @@ class Portfolio(Base):
     # Optional human-friendly name
     name: Mapped[str | None] = mapped_column(String(100), nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
-
     # Relationships
     user: Mapped["User"] = relationship(back_populates="portfolios")
     transactions: Mapped[list["Transaction"]] = relationship(
@@ -92,10 +82,6 @@ class Transaction(Base):
     # The rounded hour in **UTC** used to fetch price (tz-aware)
     timestamp_hour_rounded: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True, nullable=False
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     # Relationships
