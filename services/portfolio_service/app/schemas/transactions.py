@@ -1,11 +1,18 @@
 from pydantic import BaseModel
+from datetime import datetime
 
 
-class PortfolioCreate(BaseModel):
-    name: str
+class TransactionCreate(BaseModel):
+    portfolio_id: int
+    btc_amount: float
+    timestamp: datetime
 
 
-class PortfolioRead(BaseModel):
+class TransactionRead(BaseModel):
     id: int
-    name: str
+    portfolio_id: int
+    btc_amount: float
+    btc_price: float
+    initial_value_usd: float
+    timestamp: datetime
     model_config = {"from_attributes": True}
