@@ -10,9 +10,14 @@ class UserCreate(BaseModel):
 class UserRead(BaseModel):
     id: int
     email: EmailStr
-    created_at: datetime
+    username: str
 
     model_config = {"from_attributes": True}
+
+
+class UserInDB(UserRead):
+    password_hash: str
+    disabled: bool = False
 
 
 class LoginRequest(BaseModel):
