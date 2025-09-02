@@ -19,16 +19,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 fake_users_db = {
     "johndoe@example.com": {
         "id": 1,
-        "username": "johndoe@example.com",
         "email": "johndoe@example.com",
-        "full_name": "John Doe",
-        "disabled": False,
         "password_hash": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+        "created_at": datetime.utcnow(),
     }
 }
 
 
 def get_user(db, username: str):
+
     if username in db:
         user_dict = db[username]
         return UserInDB(**user_dict)
@@ -45,7 +44,6 @@ def get_password_hash(password):
 def authenticate_user(fake_db, username: str, password: str):
     user = get_user(fake_db, username)
     if not user:
-        print("User not found")
         return False
     if not verify_password(password, user.password_hash):
         return False
@@ -87,11 +85,3 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     if user is None:
         raise credentials_exception
     return user
-
-
-async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)],
-):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user

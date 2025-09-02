@@ -25,7 +25,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    username: Mapped[str] = mapped_column(
+    email: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False
     )
     # Store only the password hash (never plaintext). Hashing/verification is done in auth layer.
