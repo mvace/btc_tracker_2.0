@@ -2,35 +2,22 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 from core.settings import settings
 import jwt
-from app.schemas.users import UserInDB
+from app.database import get_db
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from app.schemas.token import TokenData
 from app.models import User
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
 
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-
-fake_users_db = {
-    "johndoe@example.com": {
-        "id": 1,
-        "email": "johndoe@example.com",
-        "password_hash": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "created_at": datetime.utcnow(),
-    }
-}
-
-
-def get_user(db, username: str):
-
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
 
 
 def verify_password(plain_password, password_hash):
@@ -41,12 +28,28 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def authenticate_user(fake_db, username: str, password: str):
-    user = get_user(fake_db, username)
+async def get_user(db: AsyncSession, username: str) -> User | None:
+    """
+    Fetches a user from the database by their email (username).
+    """
+    query = select(User).where(User.email == username)
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
+
+async def authenticate_user(
+    db: AsyncSession, username: str, password: str
+) -> User | None:
+    """
+    Authenticates a user. Returns the user object on success, None otherwise.
+    """
+    user = await get_user(db, username)
+
     if not user:
-        return False
+        return None
     if not verify_password(password, user.password_hash):
-        return False
+        return None
+
     return user
 
 
@@ -61,13 +64,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
-
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)], db: AsyncSession = Depends(get_db)
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -81,7 +80,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         token_data = TokenData(username=username)
     except InvalidTokenError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    user = await get_user(db, username=token_data.username)
     if user is None:
         raise credentials_exception
     return user

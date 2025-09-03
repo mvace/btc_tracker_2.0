@@ -6,12 +6,13 @@ from core.security import (
     authenticate_user,
     get_current_user,
     create_access_token,
-    fake_users_db,
 )
 from datetime import datetime, timedelta
 from core.settings import settings
 from app.schemas.token import Token
 from app.schemas.users import UserInDB
+from app.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 ACCESS_TOKEN_EXPIRES_MIN = settings.ACCESS_TOKEN_EXPIRES_MIN
@@ -22,8 +23,9 @@ router = APIRouter()
 @router.post("/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: AsyncSession = Depends(get_db),
 ) -> Token:
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
