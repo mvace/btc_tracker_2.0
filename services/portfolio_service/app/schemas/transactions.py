@@ -1,18 +1,19 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
+from decimal import Decimal
 
 
 class TransactionCreate(BaseModel):
     portfolio_id: int
-    btc_amount: float
+    btc_amount: Decimal
     timestamp: datetime
 
 
 class TransactionRead(BaseModel):
     id: int
     portfolio_id: int
-    btc_amount: float
-    btc_price: float
-    initial_value_usd: float
-    timestamp: datetime
-    model_config = {"from_attributes": True}
+    btc_amount: Decimal
+    btc_price: Decimal = Field(alias="price_at_purchase")
+    initial_value_usd: Decimal
+    timestamp_hour_rounded: datetime
+    model_config = {"from_attributes": True, "populate_by_name": True}

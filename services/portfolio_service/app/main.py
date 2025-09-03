@@ -9,8 +9,8 @@ from fastapi.security import OAuth2PasswordBearer
 
 app = FastAPI(title="Portfolio Microservice")
 
-app.include_router(portfolios.router, prefix="/portfolios", tags=["Portfolios"])
-app.include_router(transactions.router, prefix="/transactions", tags=["Transactions"])
+app.include_router(portfolios.router, prefix="/portfolio", tags=["Portfolios"])
+app.include_router(transactions.router, prefix="/transaction", tags=["Transactions"])
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 
 
