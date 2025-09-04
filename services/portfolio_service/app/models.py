@@ -51,7 +51,7 @@ class Portfolio(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
 
-    # Optional human-friendly name
+    # Mandatory human-friendly name
     name: Mapped[str | None] = mapped_column(String(100), nullable=False)
 
     # Relationships

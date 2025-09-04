@@ -14,10 +14,6 @@ class UserRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class UserInDB(UserRead):
-    password_hash: str
-
-
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
