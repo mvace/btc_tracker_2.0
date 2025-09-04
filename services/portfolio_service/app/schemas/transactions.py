@@ -17,3 +17,13 @@ class TransactionRead(BaseModel):
     initial_value_usd: Decimal
     timestamp_hour_rounded: datetime
     model_config = {"from_attributes": True, "populate_by_name": True}
+
+
+class PriceData(BaseModel):
+    unix_timestamp: int
+    high: Decimal
+    low: Decimal
+    open: Decimal
+    close: Decimal
+    volumefrom: Decimal
+    volumeto: Decimal
