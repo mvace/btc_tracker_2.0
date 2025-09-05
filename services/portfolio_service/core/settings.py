@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # Optional combined DSN; if unset, use the components above
     DATABASE_URL: str | None = None
+    DATABASE_URL_TEST: str | None = None
 
     # --- External services ---
     PRICE_SERVICE_BASE_URL: str = Field(default="http://localhost:8000")
