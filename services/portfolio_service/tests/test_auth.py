@@ -6,6 +6,7 @@ from faker import Faker
 fake = Faker()
 
 
+# _____ Register User Tests _____
 @pytest.mark.anyio
 async def test_register_user_success(client: AsyncClient):
     """
@@ -34,7 +35,7 @@ async def test_register_user_duplicate_email(client: AsyncClient):
     This version uses the API to set up the initial user.
     """
 
-    user_data = {"email": fake.email(), "password": fake.password(length=12)}
+    user_data = {"email": fake.email(), "password": fake.password()}
 
     initial_response = await client.post("/auth/register", json=user_data)
     assert initial_response.status_code == status.HTTP_201_CREATED
@@ -43,3 +44,65 @@ async def test_register_user_duplicate_email(client: AsyncClient):
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "Email already registered"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "invalid_email",
+    [
+        "not-an-email",
+        "test@test",
+        "user@.com",
+        "user@domain.",
+        "@domain.com",
+    ],
+)
+async def test_register_user_invalid_email_format(
+    client: AsyncClient, invalid_email: str
+):
+    """
+    Tests that registering with an invalid email format fails.
+    """
+
+    user_data = {"email": invalid_email, "password": fake.password()}
+
+    response = await client.post("/auth/register", json=user_data)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_data = response.json()
+    assert "value is not a valid email address" in error_data["detail"][0]["msg"]
+
+
+@pytest.mark.anyio
+async def test_register_user_missing_fields(client: AsyncClient):
+    """
+    Tests that registering with missing fields fails.
+    """
+
+    user_data = {"email": fake.email()}  # Missing password
+    response = await client.post("/auth/register", json=user_data)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    user_data = {"password": fake.password()}  # Missing email
+    response = await client.post("/auth/register", json=user_data)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.anyio
+async def test_register_user_with_extra_fields(client: AsyncClient):
+    """
+    Tests that registering with extra fields ignores them and succeeds.
+    """
+
+    user_data = {
+        "email": fake.email(),
+        "password": fake.password(),
+        "extra_field": "should be ignored",
+    }
+
+    response = await client.post("/auth/register", json=user_data)
+
+    assert response.status_code == status.HTTP_201_CREATED
+    response_data = response.json()
+    assert response_data["email"] == user_data["email"]
+    assert "extra_field" not in response_data
