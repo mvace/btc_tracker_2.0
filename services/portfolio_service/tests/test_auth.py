@@ -181,3 +181,63 @@ async def test_login_user_missing_fields(client: AsyncClient):
     login_data = {"password": fake.password()}  # Missing username
     response = await client.post("/auth/token", data=login_data)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.anyio
+async def test_login_user_with_case_insensitive_email(client: AsyncClient):
+    """
+    Tests that logging in with an email that differs only in case succeeds.
+    """
+
+    password = fake.password()
+    email = fake.email()
+
+    user_data = {"email": email, "password": password}
+
+    register_response = await client.post("/auth/register", json=user_data)
+    assert register_response.status_code == status.HTTP_201_CREATED
+
+    login_data = {"username": email.upper(), "password": password}
+    response = await client.post("/auth/token", data=login_data)
+
+    assert response.status_code == status.HTTP_200_OK
+    response_data = response.json()
+    assert "access_token" in response_data
+    assert isinstance(response_data["access_token"], str)
+    assert response_data["token_type"] == "bearer"
+
+
+@pytest.mark.anyio
+async def test_login_user_with_leading_or_trailing_whitespace(client: AsyncClient):
+    """
+    Tests that logging in with an email that has leading or trailing whitespace succeeds.
+    """
+
+    password = fake.password()
+    email = fake.email()
+
+    user_data = {"email": email, "password": password}
+
+    register_response = await client.post("/auth/register", json=user_data)
+    assert register_response.status_code == status.HTTP_201_CREATED
+
+    login_data = {"username": f"  {email}  ", "password": password}
+    response = await client.post("/auth/token", data=login_data)
+
+    assert response.status_code == status.HTTP_200_OK
+    response_data = response.json()
+    assert "access_token" in response_data
+    assert isinstance(response_data["access_token"], str)
+    assert response_data["token_type"] == "bearer"
+
+
+@pytest.mark.anyio
+async def test_user_login_with_empty_credentials(client: AsyncClient):
+    """
+    Tests that logging in with empty username and password fails.
+    """
+
+    login_data = {"username": "", "password": ""}
+    response = await client.post("/auth/token", data=login_data)
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
