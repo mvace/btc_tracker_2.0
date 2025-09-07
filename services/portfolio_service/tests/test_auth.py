@@ -106,3 +106,78 @@ async def test_register_user_with_extra_fields(client: AsyncClient):
     response_data = response.json()
     assert response_data["email"] == user_data["email"]
     assert "extra_field" not in response_data
+
+
+# _____ Login User Tests _____
+
+
+@pytest.mark.anyio
+async def test_login_user_success(client: AsyncClient):
+    """
+    Tests successful user login using dynamically generated data from Faker.
+    """
+
+    password = fake.password()
+    email = fake.email()
+
+    user_data = {"email": email, "password": password}
+
+    register_response = await client.post("/auth/register", json=user_data)
+    assert register_response.status_code == status.HTTP_201_CREATED
+
+    login_data = {"username": email, "password": password}
+    response = await client.post("/auth/token", data=login_data)
+
+    assert response.status_code == status.HTTP_200_OK
+    response_data = response.json()
+    assert "access_token" in response_data
+    assert isinstance(response_data["access_token"], str)
+    assert response_data["token_type"] == "bearer"
+
+
+@pytest.mark.anyio
+async def test_login_user_incorrect_password(client: AsyncClient):
+    """
+    Tests that logging in with an incorrect password fails.
+    """
+
+    password = fake.password()
+    email = fake.email()
+
+    user_data = {"email": email, "password": password}
+
+    register_response = await client.post("/auth/register", json=user_data)
+    assert register_response.status_code == status.HTTP_201_CREATED
+
+    login_data = {"username": email, "password": fake.password()}  # Wrong password"}
+    response = await client.post("/auth/token", data=login_data)
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json()["detail"] == "Incorrect username or password"
+
+
+@pytest.mark.anyio
+async def test_login_user_nonexistent_user(client: AsyncClient):
+    """
+    Tests that logging in with a nonexistent user fails.
+    """
+
+    login_data = {"username": fake.email(), "password": fake.password()}
+    response = await client.post("/auth/token", data=login_data)
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json()["detail"] == "Incorrect username or password"
+
+
+@pytest.mark.anyio
+async def test_login_user_missing_fields(client: AsyncClient):
+    """
+    Tests that logging in with missing fields fails.
+    """
+
+    login_data = {"username": fake.email()}  # Missing password
+    response = await client.post("/auth/token", data=login_data)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    login_data = {"password": fake.password()}  # Missing username
+    response = await client.post("/auth/token", data=login_data)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
