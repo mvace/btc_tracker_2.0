@@ -43,7 +43,8 @@ async def authenticate_user(
     """
     Authenticates a user. Returns the user object on success, None otherwise.
     """
-    user = await get_user(db, username)
+    normalized_username = username.lower().strip()
+    user = await get_user(db, normalized_username)
 
     if not user:
         return None

@@ -1,10 +1,15 @@
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, EmailStr, constr, field_validator
 from datetime import datetime
 
 
 class UserCreate(BaseModel):
     email: EmailStr
     password: constr(min_length=8)
+
+    @field_validator("email")
+    def email_to_lower(cls, value):
+        """Converts email to lowercase before validation."""
+        return value.lower()
 
 
 class UserRead(BaseModel):
