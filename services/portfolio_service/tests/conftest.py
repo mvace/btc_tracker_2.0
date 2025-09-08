@@ -7,6 +7,34 @@ from app.main import app
 from app.database import Base, get_db
 from core.settings import settings
 
+from faker import Faker
+from fastapi import status
+
+fake = Faker()
+
+
+@pytest.fixture(scope="function")
+async def created_user(client: AsyncClient) -> dict:
+    """
+    Creates a new user via the API for the purpose of a single test.
+
+    Yields a dictionary containing the 'email' and 'password' of the created user.
+    """
+    user_data = {
+        "email": fake.email(),
+        "password": fake.password(),
+    }
+
+    # Use the `client` fixture to register the user
+    response = await client.post("/auth/register", json=user_data)
+
+    # Important assert: if user creation fails, the test
+    # should fail immediately with a clear error.
+    assert response.status_code == status.HTTP_201_CREATED
+
+    # Yield the data to the test function
+    yield user_data
+
 
 @pytest.fixture(scope="session")
 def anyio_backend():
