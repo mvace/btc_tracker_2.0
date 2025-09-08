@@ -47,14 +47,15 @@ async def create_portfolio(
 ) -> Portfolio:
 
     new_portfolio = Portfolio(name=portfolio_data.name, user_id=current_user.id)
+    db.add(new_portfolio)
     try:
         await db.commit()
         await db.refresh(new_portfolio)
     except IntegrityError:
         # This block will run if the UniqueConstraint is violated
-        await db.rollback()  # Important: cancel the failed transaction
+        await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,  # 409 is more specific than 400
+            status_code=status.HTTP_409_CONFLICT,
             detail="A portfolio with this name already exists",
         )
     return new_portfolio
