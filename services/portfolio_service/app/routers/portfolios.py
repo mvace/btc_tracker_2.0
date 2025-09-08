@@ -3,11 +3,12 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from app.database import get_db
 from app.models import Portfolio, User
 from app.schemas.portfolios import PortfolioRead, PortfolioCreate
 from core.security import get_current_user
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
 router = APIRouter()
 
@@ -46,7 +47,14 @@ async def create_portfolio(
 ) -> Portfolio:
 
     new_portfolio = Portfolio(name=portfolio_data.name, user_id=current_user.id)
-    db.add(new_portfolio)
-    await db.commit()
-    await db.refresh(new_portfolio)
+    try:
+        await db.commit()
+        await db.refresh(new_portfolio)
+    except IntegrityError:
+        # This block will run if the UniqueConstraint is violated
+        await db.rollback()  # Important: cancel the failed transaction
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,  # 409 is more specific than 400
+            detail="A portfolio with this name already exists",
+        )
     return new_portfolio

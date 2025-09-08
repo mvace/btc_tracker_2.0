@@ -60,6 +60,10 @@ class Portfolio(Base):
         back_populates="portfolio", cascade="all, delete-orphan"
     )
 
+    __table_args__ = (
+        UniqueConstraint("name", "user_id", name="_user_portfolio_name_uc"),
+    )
+
 
 class Transaction(Base):
     __tablename__ = "transactions"
