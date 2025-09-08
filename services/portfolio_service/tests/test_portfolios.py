@@ -379,3 +379,61 @@ class TestCreatePortfolio:
             create_response2.json()["detail"]
             == "A portfolio with this name already exists"
         )
+
+    @pytest.mark.anyio
+    async def test_create_portfolio_with_extra_fields(
+        self, client: AsyncClient, created_user: dict
+    ):
+        """
+        Tests that creating a portfolio with extra fields ignores those fields and succeeds.
+        """
+
+        login_data = {
+            "username": created_user["email"],
+            "password": created_user["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Create a portfolio with extra fields
+        portfolio_data = {"name": "My Portfolio", "extra_field": "should be ignored"}
+        create_response = await client.post(
+            "/portfolio/", json=portfolio_data, headers=headers
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+        created_portfolio = create_response.json()
+        assert created_portfolio["name"] == "My Portfolio"
+        assert "extra_field" not in created_portfolio
+
+    @pytest.mark.anyio
+    async def test_create_portfolio_with_name_exceeding_max_length(
+        self, client: AsyncClient, created_user: dict
+    ):
+        """
+        Tests that creating a portfolio with a name exceeding the maximum length fails.
+        """
+
+        login_data = {
+            "username": created_user["email"],
+            "password": created_user["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Attempt to create a portfolio with a name longer than 100 characters
+        long_name = "P" * 101
+        portfolio_data = {"name": long_name}
+        response = await client.post(
+            "/portfolio/", json=portfolio_data, headers=headers
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert (
+            "String should have at most 100 characters"
+            in response.json()["detail"][0]["msg"]
+        )
