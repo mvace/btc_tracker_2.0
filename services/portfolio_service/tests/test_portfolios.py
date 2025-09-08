@@ -118,3 +118,139 @@ class TestListPortfolios:
         portfolios = response.json()
         assert isinstance(portfolios, list)
         assert len(portfolios) == 0
+
+
+class TestGetPortfolio:
+    @pytest.mark.anyio
+    async def test_get_portfolio_success(self, client: AsyncClient, created_user: dict):
+        """
+        Tests successful retrieval of a specific portfolio by its ID for an authenticated user.
+        """
+
+        login_data = {
+            "username": created_user["email"],
+            "password": created_user["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Create a portfolio for the user
+        portfolio_data = {"name": "My Portfolio"}
+        create_response = await client.post(
+            "/portfolio/", json=portfolio_data, headers=headers
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+        created_portfolio = create_response.json()
+        portfolio_id = created_portfolio["id"]
+
+        # Now retrieve the specific portfolio by ID
+        response = await client.get(f"/portfolio/{portfolio_id}", headers=headers)
+        assert response.status_code == status.HTTP_200_OK
+        portfolio = response.json()
+        assert portfolio["id"] == portfolio_id
+        assert portfolio["name"] == "My Portfolio"
+
+    @pytest.mark.anyio
+    async def test_get_portfolio_not_found(
+        self, client: AsyncClient, created_user: dict
+    ):
+        """
+        Tests that retrieving a non-existent portfolio returns a 404 error.
+        """
+
+        login_data = {
+            "username": created_user["email"],
+            "password": created_user["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Attempt to retrieve a portfolio with an ID that doesn't exist
+        non_existent_portfolio_id = 9999
+        response = await client.get(
+            f"/portfolio/{non_existent_portfolio_id}", headers=headers
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Portfolio not found"
+
+    @pytest.mark.anyio
+    async def test_get_portfolio_unauthenticated(self, client: AsyncClient):
+        """
+        Tests that accessing the get portfolio endpoint without authentication fails.
+        """
+        response = await client.get("/portfolio/1")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.json()["detail"] == "Not authenticated"
+
+    @pytest.mark.anyio
+    async def test_get_portfolio_forbidden_access(
+        self, client: AsyncClient, created_user: dict
+    ):
+        """
+        Tests that a user cannot access a portfolio belonging to another user.
+        """
+
+        # Create first user and their portfolio
+        login_data1 = {
+            "username": created_user["email"],
+            "password": created_user["password"],
+        }
+        login_response1 = await client.post("/auth/token", data=login_data1)
+        assert login_response1.status_code == status.HTTP_200_OK
+        token1 = login_response1.json()["access_token"]
+        headers1 = {"Authorization": f"Bearer {token1}"}
+        portfolio_data1 = {"name": "User1 Portfolio"}
+        create_response1 = await client.post(
+            "/portfolio/", json=portfolio_data1, headers=headers1
+        )
+        assert create_response1.status_code == status.HTTP_201_CREATED
+        created_portfolio1 = create_response1.json()
+        portfolio_id1 = created_portfolio1["id"]
+
+        # Create second user
+        password2 = fake.password()
+        email2 = fake.email()
+        user_data2 = {"email": email2, "password": password2}
+        register_response2 = await client.post("/auth/register", json=user_data2)
+        assert register_response2.status_code == status.HTTP_201_CREATED
+        login_data2 = {"username": email2, "password": password2}
+        login_response2 = await client.post("/auth/token", data=login_data2)
+        assert login_response2.status_code == status.HTTP_200_OK
+        token2 = login_response2.json()["access_token"]
+        headers2 = {"Authorization": f"Bearer {token2}"}
+
+        # Attempt to retrieve the first user's portfolio as the second user
+        response = await client.get(f"/portfolio/{portfolio_id1}", headers=headers2)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Portfolio not found"
+
+        @pytest.mark.anyio
+        async def test_get_portfolio_invalid_id(
+            self, client: AsyncClient, created_user: dict
+        ):
+            """
+            Tests that providing an invalid portfolio ID returns a 422 error.
+            """
+
+            login_data = {
+                "username": created_user["email"],
+                "password": created_user["password"],
+            }
+            login_response = await client.post("/auth/token", data=login_data)
+
+            assert login_response.status_code == status.HTTP_200_OK
+            token = login_response.json()["access_token"]
+            headers = {"Authorization": f"Bearer {token}"}
+
+            # Attempt to retrieve a portfolio with an invalid ID
+            invalid_portfolio_id = "invalid_id"
+            response = await client.get(
+                f"/portfolio/{invalid_portfolio_id}", headers=headers
+            )
+            assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
