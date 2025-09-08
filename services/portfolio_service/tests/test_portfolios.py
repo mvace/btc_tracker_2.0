@@ -254,3 +254,128 @@ class TestGetPortfolio:
                 f"/portfolio/{invalid_portfolio_id}", headers=headers
             )
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class TestCreatePortfolio:
+    @pytest.mark.anyio
+    async def test_create_portfolio_success(
+        self, client: AsyncClient, created_user: dict
+    ):
+        """
+        Tests successful creation of a portfolio for an authenticated user.
+        """
+
+        login_data = {
+            "username": created_user["email"],
+            "password": created_user["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Create a portfolio for the user
+        portfolio_data = {"name": "My Portfolio"}
+        create_response = await client.post(
+            "/portfolio/", json=portfolio_data, headers=headers
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+        created_portfolio = create_response.json()
+        assert created_portfolio["name"] == "My Portfolio"
+        assert "id" in created_portfolio
+
+    @pytest.mark.anyio
+    async def test_create_portfolio_unauthenticated(self, client: AsyncClient):
+        """
+        Tests that creating a portfolio without authentication fails.
+        """
+        portfolio_data = {"name": "My Portfolio"}
+        response = await client.post("/portfolio/", json=portfolio_data)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.json()["detail"] == "Not authenticated"
+
+    @pytest.mark.anyio
+    async def test_create_portfolio_missing_name(
+        self, client: AsyncClient, created_user: dict
+    ):
+        """
+        Tests that creating a portfolio with missing name field fails.
+        """
+
+        login_data = {
+            "username": created_user["email"],
+            "password": created_user["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Attempt to create a portfolio without a name
+        portfolio_data = {}  # Missing name
+        response = await client.post(
+            "/portfolio/", json=portfolio_data, headers=headers
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.anyio
+    async def test_create_portfolio_with_invalid_payload(
+        self, client: AsyncClient, created_user: dict
+    ):
+        """
+        Tests that creating a portfolio with invalid payload fails.
+        """
+
+        login_data = {
+            "username": created_user["email"],
+            "password": created_user["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Attempt to create a portfolio with an invalid payload
+        portfolio_data = {"name": 123}  # Name should be a string
+        response = await client.post(
+            "/portfolio/", json=portfolio_data, headers=headers
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.anyio
+    async def test_create_portfolio_with_duplicate_name_for_same_user(
+        self, client: AsyncClient, created_user: dict
+    ):
+        """
+        Tests that creating a portfolio with a duplicate name for the same user fails.
+        """
+
+        login_data = {
+            "username": created_user["email"],
+            "password": created_user["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Create the first portfolio
+        portfolio_data = {"name": "My Portfolio"}
+        create_response1 = await client.post(
+            "/portfolio/", json=portfolio_data, headers=headers
+        )
+        assert create_response1.status_code == status.HTTP_201_CREATED
+
+        # Attempt to create a second portfolio with the same name
+        create_response2 = await client.post(
+            "/portfolio/", json=portfolio_data, headers=headers
+        )
+        assert create_response2.status_code == status.HTTP_409_CONFLICT
+        assert (
+            create_response2.json()["detail"]
+            == "A portfolio with this name already exists"
+        )
