@@ -36,6 +36,35 @@ async def created_user(client: AsyncClient) -> dict:
     yield user_data
 
 
+@pytest.fixture(scope="function")
+async def auth_headers(client: AsyncClient, created_user: dict) -> dict:
+    """
+    Logs in the created_user and yields authentication headers.
+    """
+    login_data = {
+        "username": created_user["email"],
+        "password": created_user["password"],
+    }
+    login_response = await client.post("/auth/token", data=login_data)
+    assert login_response.status_code == status.HTTP_200_OK
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    yield headers
+
+
+@pytest.fixture(scope="function")
+async def created_portfolio(client: AsyncClient, auth_headers: dict) -> dict:
+    """
+    Creates a portfolio for the authenticated user and yields the portfolio data.
+    """
+    portfolio_data = {"name": "Test Portfolio"}
+    create_response = await client.post(
+        "/portfolio/", json=portfolio_data, headers=auth_headers
+    )
+    assert create_response.status_code == status.HTTP_201_CREATED
+    yield create_response.json()
+
+
 @pytest.fixture(scope="session")
 def anyio_backend():
     """

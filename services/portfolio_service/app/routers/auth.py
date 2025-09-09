@@ -27,6 +27,7 @@ async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: AsyncSession = Depends(get_db),
 ) -> Token:
+
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
