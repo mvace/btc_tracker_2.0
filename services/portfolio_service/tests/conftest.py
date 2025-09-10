@@ -5,10 +5,12 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 
 from app.main import app
 from app.database import Base, get_db
+from app.schemas.transactions import PriceData
 from core.settings import settings
 
 from faker import Faker
 from fastapi import status
+
 
 fake = Faker()
 
@@ -61,6 +63,48 @@ async def created_portfolio(client: AsyncClient, auth_headers: dict) -> dict:
     create_response = await client.post(
         "/portfolio/", json=portfolio_data, headers=auth_headers
     )
+    assert create_response.status_code == status.HTTP_201_CREATED
+    yield create_response.json()
+
+
+@pytest.fixture(scope="function")
+async def created_transaction(
+    client: AsyncClient,
+    auth_headers: dict,
+    created_portfolio: dict,
+    mocker,
+) -> dict:
+    """
+    Creates a transaction for the authenticated user and yields the transaction data.
+    MOCKS the external call to fetch BTC price data.
+    """
+    # 2. Define the fake data for the mock
+    fake_price_data = PriceData(
+        unix_timestamp=1756908000,
+        high=112545.3,
+        low=111143.27,
+        open=111491.96,
+        close=112293.52,
+        volumefrom=2809.0,
+        volumeto=314166893.0,
+    )
+
+    # 3. Patch the function to prevent the real network call
+    mocker.patch(
+        "app.routers.transactions.fetch_btc_price_data_for_timestamp",
+        return_value=fake_price_data,
+    )
+
+    # 4. Now, the rest of your fixture will work without a real network call
+    transaction_data = {
+        "portfolio_id": created_portfolio["id"],
+        "btc_amount": "0.01",
+        "timestamp": "2023-10-01T12:00:00Z",
+    }
+    create_response = await client.post(
+        "/transaction/", json=transaction_data, headers=auth_headers
+    )
+
     assert create_response.status_code == status.HTTP_201_CREATED
     yield create_response.json()
 
