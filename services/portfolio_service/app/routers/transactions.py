@@ -47,6 +47,12 @@ async def create_transaction(
     timestamp = int(transaction_data.timestamp.timestamp())
     price_data = await fetch_btc_price_data_for_timestamp(timestamp)
 
+    if not price_data:
+        raise HTTPException(
+            status_code=503,  # Service Unavailable
+            detail="Could not fetch price data from the external service. Please try again later.",
+        )
+
     btc_amount = transaction_data.btc_amount
     price_at_purchase = price_data.close
     initial_value_usd = btc_amount * price_at_purchase
