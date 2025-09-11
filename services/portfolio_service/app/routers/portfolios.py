@@ -59,3 +59,50 @@ async def create_portfolio(
             detail="A portfolio with this name already exists",
         )
     return new_portfolio
+
+
+@router.put("/{portfolio_id}", response_model=PortfolioRead)
+async def update_portfolio(
+    portfolio_id: int,
+    portfolio_data: PortfolioCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+) -> Portfolio:
+    query = select(Portfolio).where(
+        Portfolio.id == portfolio_id, Portfolio.user_id == current_user.id
+    )
+    result = await db.execute(query)
+    portfolio = result.scalar_one_or_none()
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+
+    portfolio.name = portfolio_data.name
+    try:
+        await db.commit()
+        await db.refresh(portfolio)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A portfolio with this name already exists",
+        )
+    return portfolio
+
+
+@router.delete("/{portfolio_id}", status_code=204)
+async def delete_portfolio(
+    portfolio_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Portfolio).where(
+        Portfolio.id == portfolio_id, Portfolio.user_id == current_user.id
+    )
+    result = await db.execute(query)
+    portfolio = result.scalar_one_or_none()
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+
+    await db.delete(portfolio)
+    await db.commit()
+    return

@@ -276,3 +276,220 @@ class TestCreatePortfolio:
             "String should have at most 100 characters"
             in response.json()["detail"][0]["msg"]
         )
+
+
+class TestUpdatePortfolio:
+    @pytest.mark.anyio
+    async def test_update_portfolio_success(
+        self, client: AsyncClient, created_portfolio: dict, auth_headers: dict
+    ):
+        """
+        Tests successful update of a portfolio for an authenticated user.
+        """
+        portfolio_id = created_portfolio["id"]
+        updated_data = {"name": "Updated Portfolio Name"}
+
+        # Update the portfolio
+        update_response = await client.put(
+            f"/portfolio/{portfolio_id}", json=updated_data, headers=auth_headers
+        )
+        assert update_response.status_code == status.HTTP_200_OK
+        updated_portfolio = update_response.json()
+        assert updated_portfolio["id"] == portfolio_id
+        assert updated_portfolio["name"] == "Updated Portfolio Name"
+
+    @pytest.mark.anyio
+    async def test_update_portfolio_not_found(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """
+        Tests that updating a non-existent portfolio returns a 404 error.
+        """
+
+        # Attempt to update a portfolio with an ID that doesn't exist
+        non_existent_portfolio_id = 9999
+        updated_data = {"name": "Updated Portfolio Name"}
+        response = await client.put(
+            f"/portfolio/{non_existent_portfolio_id}",
+            json=updated_data,
+            headers=auth_headers,
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Portfolio not found"
+
+    @pytest.mark.anyio
+    async def test_update_portfolio_unauthenticated(self, client: AsyncClient):
+        """
+        Tests that updating a portfolio without authentication fails.
+        """
+        response = await client.put("/portfolio/1", json={"name": "New Name"})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.json()["detail"] == "Not authenticated"
+
+    @pytest.mark.anyio
+    async def test_update_portfolio_forbidden_access(
+        self, client: AsyncClient, created_portfolio: dict
+    ):
+        """
+        Tests that a user cannot update a portfolio belonging to another user.
+        """
+
+        # First user's portfolio
+        portfolio_id1 = created_portfolio["id"]
+
+        # Create second user
+        password2 = fake.password()
+        email2 = fake.email()
+        user_data2 = {"email": email2, "password": password2}
+        register_response2 = await client.post("/auth/register", json=user_data2)
+        assert register_response2.status_code == status.HTTP_201_CREATED
+        login_data2 = {"username": email2, "password": password2}
+        login_response2 = await client.post("/auth/token", data=login_data2)
+        assert login_response2.status_code == status.HTTP_200_OK
+        token2 = login_response2.json()["access_token"]
+        headers2 = {"Authorization": f"Bearer {token2}"}
+
+        # Attempt to update the first user's portfolio as the second user
+        updated_data = {"name": "Malicious Update"}
+        response = await client.put(
+            f"/portfolio/{portfolio_id1}", json=updated_data, headers=headers2
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Portfolio not found"
+
+    @pytest.mark.anyio
+    async def test_update_portfolio_with_duplicate_name_for_same_user(
+        self, client: AsyncClient, created_portfolio: dict, auth_headers: dict
+    ):
+        """
+        Tests that updating a portfolio to a name that already exists for the same user fails.
+        """
+
+        # Create a second portfolio
+        second_portfolio_data = {"name": "Second Portfolio"}
+        create_response = await client.post(
+            "/portfolio/", json=second_portfolio_data, headers=auth_headers
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+        second_portfolio = create_response.json()
+
+        # Attempt to update the first portfolio to have the same name as the second
+        portfolio_id1 = created_portfolio["id"]
+        updated_data = {"name": second_portfolio["name"]}
+        update_response = await client.put(
+            f"/portfolio/{portfolio_id1}", json=updated_data, headers=auth_headers
+        )
+        assert update_response.status_code == status.HTTP_409_CONFLICT
+        assert (
+            update_response.json()["detail"]
+            == "A portfolio with this name already exists"
+        )
+
+    @pytest.mark.anyio
+    async def test_update_portfolio_with_invalid_payload(
+        self, client: AsyncClient, created_portfolio: dict, auth_headers: dict
+    ):
+        """
+        Tests that updating a portfolio with invalid payload fails.
+        """
+        portfolio_id = created_portfolio["id"]
+
+        # Attempt to update a portfolio with an invalid payload
+        updated_data = {"name": 123}  # Name should be a string
+        response = await client.put(
+            f"/portfolio/{portfolio_id}", json=updated_data, headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.anyio
+    async def test_update_portfolio_with_missing_name(
+        self, client: AsyncClient, created_portfolio: dict, auth_headers: dict
+    ):
+        """
+        Tests that updating a portfolio with missing name field fails.
+        """
+
+        portfolio_id = created_portfolio["id"]
+
+        # Attempt to update a portfolio without a name
+        updated_data = {}  # Missing name
+        response = await client.put(
+            f"/portfolio/{portfolio_id}", json=updated_data, headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class TestDeletePortfolio:
+
+    @pytest.mark.anyio
+    async def test_delete_portfolio_success(
+        self, client: AsyncClient, created_portfolio: dict, auth_headers: dict
+    ):
+        """
+        Tests successful deletion of a portfolio for an authenticated user.
+        """
+        portfolio_id = created_portfolio["id"]
+
+        # Delete the portfolio
+        delete_response = await client.delete(
+            f"/portfolio/{portfolio_id}", headers=auth_headers
+        )
+        assert delete_response.status_code == status.HTTP_204_NO_CONTENT
+
+        # Verify the portfolio is deleted
+        get_response = await client.get(
+            f"/portfolio/{portfolio_id}", headers=auth_headers
+        )
+        assert get_response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.anyio
+    async def test_delete_portfolio_not_found(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """
+        Tests that deleting a non-existent portfolio returns a 404 error.
+        """
+
+        # Attempt to delete a portfolio with an ID that doesn't exist
+        non_existent_portfolio_id = 9999
+        response = await client.delete(
+            f"/portfolio/{non_existent_portfolio_id}", headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Portfolio not found"
+
+    @pytest.mark.anyio
+    async def test_delete_portfolio_unauthenticated(self, client: AsyncClient):
+        """
+        Tests that deleting a portfolio without authentication fails.
+        """
+        response = await client.delete("/portfolio/1")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.json()["detail"] == "Not authenticated"
+
+    @pytest.mark.anyio
+    async def test_delete_portfolio_forbidden_access(
+        self, client: AsyncClient, created_portfolio: dict
+    ):
+        """
+        Tests that a user cannot delete a portfolio belonging to another user.
+        """
+
+        # First user's portfolio
+        portfolio_id1 = created_portfolio["id"]
+
+        # Create second user
+        password2 = fake.password()
+        email2 = fake.email()
+        user_data2 = {"email": email2, "password": password2}
+        register_response2 = await client.post("/auth/register", json=user_data2)
+        assert register_response2.status_code == status.HTTP_201_CREATED
+        login_data2 = {"username": email2, "password": password2}
+        login_response2 = await client.post("/auth/token", data=login_data2)
+        assert login_response2.status_code == status.HTTP_200_OK
+        token2 = login_response2.json()["access_token"]
+        headers2 = {"Authorization": f"Bearer {token2}"}
+        # Attempt to delete the first user's portfolio as the second user
+        response = await client.delete(f"/portfolio/{portfolio_id1}", headers=headers2)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Portfolio not found"
