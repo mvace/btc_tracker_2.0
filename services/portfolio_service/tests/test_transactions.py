@@ -277,7 +277,29 @@ class TestListTransactions:
     async def test_list_transactions_does_not_return_other_users_transactions(
         self, client: AsyncClient, auth_headers: dict, created_transaction: dict
     ):
-        pass
+        """
+        Tests that listing transactions does not return transactions belonging to other users.
+        """
+        # Create second user and get their auth headers
+        second_user_data = {
+            "email": fake.email(),
+            "password": fake.password(),
+        }
+        response = await client.post("/auth/register", json=second_user_data)
+        assert response.status_code == status.HTTP_201_CREATED
+        login_data = {
+            "username": second_user_data["email"],
+            "password": second_user_data["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+        assert login_response.status_code == status.HTTP_200_OK
+        second_user_token = login_response.json()["access_token"]
+        second_user_headers = {"Authorization": f"Bearer {second_user_token}"}
+
+        list_response = await client.get("/transaction/", headers=second_user_headers)
+        assert list_response.status_code == status.HTTP_200_OK
+        transactions = list_response.json()
+        assert len(transactions) == 0
 
     @pytest.mark.anyio
     async def test_list_transactions_returns_all_transactions_for_a_user(
@@ -417,3 +439,226 @@ class TestListTransactions:
         except ValueError:
             is_valid_datetime = False
         assert is_valid_datetime
+
+
+class TestUpdateTransaction:
+    mock_price_data = PriceData(
+        unix_timestamp=1756908000,
+        high=112545.3,
+        low=111143.27,
+        open=111491.96,
+        close=112293.52,
+        volumefrom=2809.0,
+        volumeto=314166893.0,
+    )
+
+    @pytest.mark.anyio
+    async def test_update_transaction_success(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        created_transaction: dict,
+        created_portfolio: dict,
+        mocker,
+    ):
+        """
+        Tests that updating a transaction works as expected.
+        """
+
+        # Mock the fetch_btc_price_data_for_timestamp function to avoid real HTTP calls
+        mocker.patch(
+            "app.routers.transactions.fetch_btc_price_data_for_timestamp",
+            return_value=self.mock_price_data,
+        )
+
+        transaction_id = created_transaction["id"]
+        new_btc_amount = "0.02"
+        new_timestamp = fake.date_time_this_year(tzinfo=None).isoformat()
+        update_data = {
+            "portfolio_id": created_portfolio["id"],
+            "btc_amount": new_btc_amount,
+            "timestamp": new_timestamp,
+        }
+        response = await client.put(
+            f"/transaction/{transaction_id}", json=update_data, headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_200_OK
+        updated_transaction = response.json()
+        assert updated_transaction["id"] == transaction_id
+        assert Decimal(updated_transaction["btc_amount"]) == Decimal(new_btc_amount)
+        assert Decimal(updated_transaction["price_at_purchase"]) == Decimal("112293.52")
+        assert Decimal(updated_transaction["initial_value_usd"]) == (
+            Decimal(new_btc_amount) * Decimal("112293.52")
+        ).quantize(Decimal("0.01"))
+
+    @pytest.mark.anyio
+    async def test_update_transaction_unauthenticated_user_returns_401(
+        self, client: AsyncClient, created_transaction: dict, created_portfolio: dict
+    ):
+        """
+        Tests that an unauthenticated user cannot update a transaction.
+        """
+        transaction_id = created_transaction["id"]
+        update_data = {
+            "portfolio_id": created_portfolio["id"],
+            "btc_amount": "0.02",
+            "timestamp": fake.date_time_this_year(tzinfo=None).isoformat(),
+        }
+        response = await client.put(f"/transaction/{transaction_id}", json=update_data)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.anyio
+    async def test_update_transaction_nonexistent_id_returns_404(
+        self, client: AsyncClient, auth_headers: dict, created_portfolio: dict
+    ):
+        """
+        Tests that updating a non-existent transaction returns 404.
+        """
+        update_data = {
+            "portfolio_id": created_portfolio["id"],
+            "btc_amount": "0.02",
+            "timestamp": fake.date_time_this_year(tzinfo=None).isoformat(),
+        }
+        response = await client.put(
+            "/transaction/9999", json=update_data, headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.anyio
+    async def test_update_transaction_invalid_data_returns_422(
+        self, client: AsyncClient, auth_headers: dict, created_transaction: dict
+    ):
+        """
+        Tests that updating a transaction with invalid data returns 422.
+        """
+        transaction_id = created_transaction["id"]
+        update_data = {
+            "portfolio_id": created_transaction["portfolio_id"],
+            "btc_amount": "invalid_amount",  # Invalid btc_amount
+            "timestamp": "invalid_timestamp",  # Invalid timestamp
+        }
+        response = await client.put(
+            f"/transaction/{transaction_id}", json=update_data, headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.anyio
+    async def test_update_transaction_for_other_users_transaction_returns_404(
+        self, client: AsyncClient, auth_headers: dict, created_transaction: dict, mocker
+    ):
+        """
+        Tests that attempting to update another user's transaction returns 404.
+        """
+        # Mock the fetch_btc_price_data_for_timestamp function to avoid real HTTP calls
+        mocker.patch(
+            "app.routers.transactions.fetch_btc_price_data_for_timestamp",
+            return_value=self.mock_price_data,
+        )
+
+        transaction_id = created_transaction["id"]
+
+        # Create second user and get their auth headers
+        second_user_data = {
+            "email": fake.email(),
+            "password": fake.password(),
+        }
+        response = await client.post("/auth/register", json=second_user_data)
+        assert response.status_code == status.HTTP_201_CREATED
+        login_data = {
+            "username": second_user_data["email"],
+            "password": second_user_data["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+        assert login_response.status_code == status.HTTP_200_OK
+        second_user_token = login_response.json()["access_token"]
+        second_user_headers = {"Authorization": f"Bearer {second_user_token}"}
+
+        update_data = {
+            "portfolio_id": created_transaction["portfolio_id"],
+            "btc_amount": "0.02",
+            "timestamp": fake.date_time_this_year(tzinfo=None).isoformat(),
+        }
+        response = await client.put(
+            f"/transaction/{transaction_id}",
+            json=update_data,
+            headers=second_user_headers,
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+class TestDeleteTransaction:
+    @pytest.mark.anyio
+    async def test_delete_transaction_success(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        created_transaction: dict,
+    ):
+        """
+        Tests that deleting a transaction works as expected.
+        """
+        transaction_id = created_transaction["id"]
+        response = await client.delete(
+            f"/transaction/{transaction_id}", headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        # Verify that the transaction is actually deleted
+        get_response = await client.get(
+            f"/transaction/{transaction_id}", headers=auth_headers
+        )
+        assert get_response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.anyio
+    async def test_delete_transaction_unauthenticated_user_returns_401(
+        self, client: AsyncClient, created_transaction: dict
+    ):
+        """
+        Tests that an unauthenticated user cannot delete a transaction.
+        """
+
+        transaction_id = created_transaction["id"]
+        response = await client.delete(f"/transaction/{transaction_id}")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.anyio
+    async def test_delete_transaction_nonexistent_id_returns_404(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """
+        Tests that deleting a non-existent transaction returns 404.
+        """
+        response = await client.delete("/transaction/9999", headers=auth_headers)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.anyio
+    async def test_delete_transaction_other_users_transaction_returns_404(
+        self, client: AsyncClient, created_transaction: dict
+    ):
+        """
+        Tests that attempting to delete another user's transaction returns 404.
+        """
+
+        transaction_id = created_transaction["id"]
+
+        # Create second user and get their auth headers
+        second_user_data = {
+            "email": fake.email(),
+            "password": fake.password(),
+        }
+        response = await client.post("/auth/register", json=second_user_data)
+        assert response.status_code == status.HTTP_201_CREATED
+        login_data = {
+            "username": second_user_data["email"],
+            "password": second_user_data["password"],
+        }
+        login_response = await client.post("/auth/token", data=login_data)
+        assert login_response.status_code == status.HTTP_200_OK
+        second_user_token = login_response.json()["access_token"]
+        second_user_headers = {"Authorization": f"Bearer {second_user_token}"}
+
+        # Attempt to delete the first user's transaction with the second user's auth headers
+        response = await client.delete(
+            f"/transaction/{transaction_id}", headers=second_user_headers
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
