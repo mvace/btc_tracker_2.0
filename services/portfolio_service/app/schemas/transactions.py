@@ -1,11 +1,19 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional, Any
+from pydantic import field_validator
 
 
 class TransactionCreate(BaseModel):
     portfolio_id: int
-    btc_amount: Decimal
+    btc_amount: Decimal = Field(
+        gt=0,
+        le=21_000_000,
+        decimal_places=8,
+        max_digits=16,
+        description="Amount of BTC purchased (positive)",
+    )
     timestamp: datetime
 
 
