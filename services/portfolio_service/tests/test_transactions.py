@@ -4,9 +4,12 @@ from fastapi import status
 from faker import Faker
 from decimal import Decimal
 from app.schemas.transactions import PriceData
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
 
 fake = Faker()
+
+FIRST_HISTORICAL_TIMESTAMP = datetime(2010, 7, 17, 0, 30, 0)
 
 
 class TestCreateTransaction:
@@ -167,6 +170,55 @@ class TestCreateTransaction:
             "/transaction/", json=transaction_data, headers=second_user_headers
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize(
+        "key, value, description",
+        [
+            ("btc_amount", "0", "Amount is zero"),
+            ("btc_amount", "-1", "Amount is negative"),
+            ("btc_amount", "21000001", "Amount exceeds max supply"),
+            ("btc_amount", "0.123456789", "Amount has too many decimal places"),
+            ("btc_amount", "123456789.1234567", "Amount has too many total digits"),
+            (
+                "timestamp",
+                (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+                "Timestamp is in the future",
+            ),
+            (
+                "timestamp",
+                (FIRST_HISTORICAL_TIMESTAMP - timedelta(days=1)).isoformat(),
+                "Timestamp is before historical minimum",
+            ),
+        ],
+    )
+    async def test_create_transaction_invalid_boundary_values(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        created_portfolio: dict,
+        key: str,
+        value: str,
+        description: str,
+    ):
+        """
+        Tests various invalid boundary conditions for btc_amount and timestamp.
+        """
+        transaction_data = {
+            "portfolio_id": created_portfolio["id"],
+            "btc_amount": "1.0",  # Default valid value
+            "timestamp": datetime.now(timezone.utc).isoformat(),  # Default valid value
+        }
+        # Overwrite the default with the invalid value for this test case
+        transaction_data[key] = value
+
+        response = await client.post(
+            "/transaction/", json=transaction_data, headers=auth_headers
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        # You can also assert the detail message if you want to be more specific
+        # assert key in response.text
 
 
 class TestGetTransaction:
