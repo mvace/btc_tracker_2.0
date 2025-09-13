@@ -4,17 +4,24 @@ from decimal import Decimal
 from typing import Optional, Any
 from pydantic import field_validator
 
+FIRST_HISTORICAL_TIMESTAMP = datetime(2010, 7, 17, 0, 30, 0)
+
 
 class TransactionCreate(BaseModel):
     portfolio_id: int
     btc_amount: Decimal = Field(
-        gt=0,
-        le=21_000_000,
+        gt=Decimal("0.00000000"),
+        le=Decimal("21000000"),
         decimal_places=8,
         max_digits=16,
         description="Amount of BTC purchased (positive)",
     )
-    timestamp: datetime
+
+    timestamp: datetime = Field(
+        gt=FIRST_HISTORICAL_TIMESTAMP,
+        le=datetime.utcnow(),  # needs to be refactored later
+        description="Timestamp of the transaction (UTC)",
+    )
 
 
 class TransactionRead(BaseModel):

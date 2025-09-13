@@ -9,7 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.types import DateTime, Numeric, BigInteger, Integer
 
 from app.database import Base
@@ -90,3 +90,41 @@ class Transaction(Base):
 
     # Relationships
     portfolio: Mapped["Portfolio"] = relationship(back_populates="transactions")
+
+    @validates("btc_amount")
+    def validate_btc_amount(self, value: Decimal) -> Decimal:
+        if not isinstance(value, Decimal):
+            raise TypeError("btc_amount must be a Decimal.")
+
+        min_val = Decimal("0.00000001")
+        max_val = Decimal("21000000")
+        if not (min_val <= value <= max_val):
+            raise ValueError(f"btc_amount must be between {min_val} and {max_val}.")
+
+        if value.as_tuple().exponent < -8:
+            raise ValueError("btc_amount cannot have more than 8 decimal places.")
+
+        return value
+
+    @validates("timestamp_hour_rounded")
+    def validate_timestamp_hour_rounded(self, value: datetime) -> datetime:
+        if not isinstance(value, datetime):
+            raise TypeError("timestamp_hour_rounded must be a datetime object.")
+
+        if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+            raise ValueError("timestamp_hour_rounded must be timezone-aware (UTC).")
+
+        if value.minute != 0 or value.second != 0 or value.microsecond != 0:
+            raise ValueError(
+                "timestamp_hour_rounded must be rounded to the hour (minutes, seconds, microseconds must be zero)."
+            )
+
+        first_historical = datetime(2010, 7, 17, 0, 30, 0, tzinfo=value.tzinfo)
+        now_utc = datetime.utcnow().replace(tzinfo=value.tzinfo)
+
+        if not (first_historical <= value <= now_utc):
+            raise ValueError(
+                f"timestamp_hour_rounded must be between {first_historical} and {now_utc}."
+            )
+
+        return value
