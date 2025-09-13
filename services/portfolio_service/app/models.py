@@ -92,7 +92,7 @@ class Transaction(Base):
     portfolio: Mapped["Portfolio"] = relationship(back_populates="transactions")
 
     @validates("btc_amount")
-    def validate_btc_amount(self, value: Decimal) -> Decimal:
+    def validate_btc_amount(self, key, value: Decimal) -> Decimal:
         if not isinstance(value, Decimal):
             raise TypeError("btc_amount must be a Decimal.")
 
@@ -107,7 +107,7 @@ class Transaction(Base):
         return value
 
     @validates("timestamp_hour_rounded")
-    def validate_timestamp_hour_rounded(self, value: datetime) -> datetime:
+    def validate_timestamp_hour_rounded(self, key, value: datetime) -> datetime:
         if not isinstance(value, datetime):
             raise TypeError("timestamp_hour_rounded must be a datetime object.")
 
