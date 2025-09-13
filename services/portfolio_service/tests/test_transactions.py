@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 
 fake = Faker()
 
-FIRST_HISTORICAL_TIMESTAMP = datetime(2010, 7, 17, 0, 30, 0)
+FIRST_HISTORICAL_TIMESTAMP = datetime(2010, 7, 17, 0, 30, 0, tzinfo=timezone.utc)
 
 
 class TestCreateTransaction:

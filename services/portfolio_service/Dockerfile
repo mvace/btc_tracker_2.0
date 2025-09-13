@@ -1,0 +1,17 @@
+# Use the official Python image
+FROM python:3.11
+
+# Set the working directory inside the container
+WORKDIR /portfolio_service
+
+# Copy the current directory contents (including requirements.txt)
+COPY . .
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose the port
+EXPOSE 8001
+
+# Run the application (for your FastAPI service)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
