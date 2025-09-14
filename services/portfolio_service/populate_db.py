@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -67,6 +67,9 @@ async def populate():
             transactions = []
             for p in portfolios:
                 for k in range(3):  # 3 transactions per portfolio
+                    now_aware = datetime.now(timezone.utc)
+                    rounded_time = now_aware.replace(minute=0, second=0, microsecond=0)
+
                     t = Transaction(
                         portfolio_id=p.id,
                         btc_amount=Decimal("0.01") * (k + 1),
@@ -74,7 +77,7 @@ async def populate():
                         initial_value_usd=Decimal("0.01")
                         * (k + 1)
                         * (Decimal("30000.00") + k * 1000),
-                        timestamp_hour_rounded=datetime.utcnow(),
+                        timestamp_hour_rounded=rounded_time,
                     )
                     transactions.append(t)
                     session.add(t)

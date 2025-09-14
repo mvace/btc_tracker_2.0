@@ -5,7 +5,7 @@ factory_boy==3.3.3
 Faker==37.6.0
 fastapi==0.115.8
 httpx==0.28.1
-pydantic==2.10.6
+pydantic[email]==2.10.6
 pydantic_core==2.27.2
 pydantic-settings==2.8.1
 passlib==1.7.4
@@ -17,3 +17,5 @@ pytest-anyio==0.0.0
 pytest-asyncio==1.1.0
 requests==2.32.3
 python-multipart==0.0.20
+uvicorn==0.34.0
+

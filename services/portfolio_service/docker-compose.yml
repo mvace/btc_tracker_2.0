@@ -1,0 +1,37 @@
+# docker-compose.yml
+
+version: "3.9"
+
+services:
+  # 1. The PostgreSQL Database Container
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db_portfolio
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5433:5432"
+    volumes:
+      # Makes database data persistent
+      - postgres_data:/var/lib/postgresql/data
+      # Creates the portfolio_db on startup
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+
+  # 2. Your Portfolio Service
+  portfolio_service:
+    # Assumes your Dockerfile is in a subdirectory named 'portfolio_service'
+    build: .
+    container_name: portfolio_service
+    restart: always
+    depends_on:
+      - db
+    ports:
+      # You can use port 8000 or 8001 on your host machine
+      - "8001:8000"
+    environment:
+      # Passes the database URL to your application
+      - DATABASE_URL=${DATABASE_URL}
+
+volumes:
+  postgres_data:
