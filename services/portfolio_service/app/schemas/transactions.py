@@ -28,7 +28,9 @@ class TransactionCreate(BaseModel):
             v = v.replace(tzinfo=timezone.utc)
         last_valid_timestamp = get_last_valid_timestamp()
         if not FIRST_HISTORICAL_TIMESTAMP < v <= last_valid_timestamp:
-            raise ValueError("Timestamp is out of the valid range.")
+            raise ValueError(
+                f"Timestamp is out of the valid range. Last valid is timestamp is {last_valid_timestamp}."
+            )
         return v
 
 
