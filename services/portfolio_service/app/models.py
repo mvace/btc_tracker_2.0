@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.types import DateTime, Numeric, BigInteger, Integer
 
 from app.database import Base
+from utils.timestamp import FIRST_HISTORICAL_TIMESTAMP, get_last_valid_timestamp
 
 # ---- Decimal precisions ----
 # BTC amounts need up to 8 decimal places
@@ -119,12 +120,12 @@ class Transaction(Base):
                 "timestamp_hour_rounded must be rounded to the hour (minutes, seconds, microseconds must be zero)."
             )
 
-        first_historical = datetime(2010, 7, 17, 0, 30, 0, tzinfo=value.tzinfo)
-        now_utc = datetime.utcnow().replace(tzinfo=value.tzinfo)
+        first_historical = FIRST_HISTORICAL_TIMESTAMP
+        last_valid_timestamp = get_last_valid_timestamp()
 
-        if not (first_historical <= value <= now_utc):
+        if not (first_historical <= value <= last_valid_timestamp):
             raise ValueError(
-                f"timestamp_hour_rounded must be between {first_historical} and {now_utc}."
+                f"timestamp_hour_rounded must be between {first_historical} and {last_valid_timestamp}."
             )
 
         return value
