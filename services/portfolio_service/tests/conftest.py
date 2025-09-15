@@ -121,10 +121,11 @@ def anyio_backend():
 @pytest.fixture(scope="session")
 async def engine() -> AsyncGenerator[any, None]:
     """
-    Creates and disposes of the test database engine once per session.
-    This manages the connection pool for the entire test run.
+    Creates the test database engine and tables once per session.
     """
     test_engine = create_async_engine(settings.DATABASE_URL_TEST)
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield test_engine
     await test_engine.dispose()
 
@@ -132,22 +133,16 @@ async def engine() -> AsyncGenerator[any, None]:
 @pytest.fixture(scope="function")
 async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
     """
-    Provides a clean, isolated database for each test function.
-    Creates tables, yields a transactional session, and then drops tables.
+    Creates a new database session with a transaction for each test.
+    Rolls back the transaction after the test is completed.
     """
-    # Create a new sessionmaker bound to the session-scoped engine
-    TestingSessionLocal = async_sessionmaker(
-        autocommit=False, autoflush=False, bind=engine
-    )
+    async with engine.connect() as connection:
+        async with connection.begin() as transaction:
+            # We use a sessionmaker that's bound to our single connection
+            Session = async_sessionmaker(bind=connection, expire_on_commit=False)
+            session = Session()
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    async with TestingSessionLocal() as session:
-        yield session
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+            yield session
 
 
 @pytest.fixture(scope="function")
