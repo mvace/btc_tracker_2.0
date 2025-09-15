@@ -2,6 +2,7 @@ import httpx  # Import httpx
 import logging  # Import logging
 from pydantic import ValidationError
 from app.schemas.transactions import PriceData
+from core.settings import settings
 
 # It's a good practice to set up a logger
 logger = logging.getLogger(__name__)
@@ -12,9 +13,7 @@ async def fetch_btc_price_data_for_timestamp(timestamp: int) -> PriceData | None
     Fetches the historical Bitcoin price in USD for a given timestamp from the price_service API.
     Returns PriceData on success, or None on failure.
     """
-    url = (
-        f"http://localhost:8000/prices/{timestamp}"  # Use service name if using Docker
-    )
+    url = f"{settings.PRICE_SERVICE_BASE_URL}/prices/{timestamp}"  # Use service name if using Docker
 
     try:
         # Use an async context manager for the client

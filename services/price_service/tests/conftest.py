@@ -29,8 +29,18 @@ async def prepare_test_db():
 
 @pytest.fixture
 async def db_session():
-    async with TestSessionLocal() as session:
+    # Before the tests run, create all the tables in the test database.
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Yield a session to be used by the dependency override.
+    async with TestingSessionLocal() as session:
         yield session
+
+    # After the tests are done, drop the tables again.
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture

@@ -21,8 +21,7 @@ class Settings(BaseSettings):
     DATABASE_URL_TEST: str | None = None
 
     # --- External services ---
-    PRICE_SERVICE_BASE_URL: str = Field(default="http://localhost:8000")
-
+    PRICE_SERVICE_BASE_URL: str = Field()
     # --- Security / Auth ---
     SECRET_KEY: str = Field(..., description="JWT signing secret")
     ALGORITHM: str = Field(default="HS256")
