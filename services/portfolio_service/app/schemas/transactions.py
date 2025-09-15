@@ -5,8 +5,6 @@ from typing import Optional, Any
 from pydantic import field_validator
 from utils.timestamp import get_last_valid_timestamp, FIRST_HISTORICAL_TIMESTAMP
 
-)
-
 
 class TransactionCreate(BaseModel):
     portfolio_id: int
@@ -20,9 +18,16 @@ class TransactionCreate(BaseModel):
 
     timestamp: datetime = Field(
         gt=FIRST_HISTORICAL_TIMESTAMP,
-        le=get_last_valid_timestamp(),
         description="Timestamp of the transaction (UTC)",
     )
+
+    @field_validator("timestamp")
+    @classmethod
+    def validate_timestamp(cls, v: datetime) -> datetime:
+        last_valid_timestamp = get_last_valid_timestamp()
+        if not FIRST_HISTORICAL_TIMESTAMP < v <= last_valid_timestamp:
+            raise ValueError("Timestamp is out of the valid range.")
+        return v
 
 
 class TransactionRead(BaseModel):
@@ -43,7 +48,6 @@ class PriceData(BaseModel):
     close: Decimal
     volumefrom: Decimal
     volumeto: Decimal
-
 
 
 class TransactionRead(BaseModel):
