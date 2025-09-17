@@ -4,23 +4,18 @@ import requests
 import pandas as pd
 from streamlit_cookies_manager import EncryptedCookieManager
 
+# --- COOKIE MANAGER ---
+cookies = EncryptedCookieManager(
+    password="my_secret_encryption_password",
+)
+if not cookies.ready():
+    st.stop()
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Portfolio Tracker", page_icon="💰", layout="wide")
 
 API_URL = "https://bitfolio.up.railway.app"
 # --- AUTHENTICATION & STATE ---
-# Initialize cookie manager
-cookies = EncryptedCookieManager(
-    password="my_secret_encryption_password",
-)
-
-# Wait until the cookies are loaded
-if not cookies.ready():
-    st.stop()
-
-# Retrieve JWT token from cookies
-jwt_token = cookies.get("jwt_token")
 
 # Initialize session state variables if they don't exist
 if "logged_in" not in st.session_state:
@@ -37,9 +32,7 @@ def login_user(username, password):
         )
         if response.status_code == 200:
             data = response.json()
-            st.session_state.token = data.get("access_token")
-            st.session_state.user = data.get("user")
-            st.session_state.logged_in = True
+            cookies["jwt_token"] = data.get("access_token")
             return True
         else:
             st.error(f"Login failed: {response.json().get('detail')}")
@@ -53,18 +46,20 @@ def login_user(username, password):
 
 def logout_user():
     """Function to log out a user."""
-    st.session_state.logged_in = False
-    st.session_state.token = ""
+    del cookies["jwt_token"]
     st.info("You have been logged out.")
 
 
 # --- UI ---
 
 st.title("💰 Portfolio & Transaction Tracker")
+jwt_token = cookies.get("jwt_token")
 
 # If user is not logged in, show login/register forms
-if jwt_token is None:
+if not jwt_token:
+    st.write(f"JWT Token: {jwt_token}")
     st.subheader("Welcome! Please log in or register.")
+
     login_tab, register_tab = st.tabs(["Login", "Register"])
 
     with login_tab:
@@ -73,7 +68,6 @@ if jwt_token is None:
             # Use your existing login function with the demo credentials
             if login_user("bob@example.com", "bobpass"):
                 st.success("Logged in with Demo Account!")
-                cookies["jwt_token"] = st.session_state.token
                 # Rerun to reflect the login state
                 st.rerun()
 
@@ -84,7 +78,6 @@ if jwt_token is None:
             if submitted:
                 if login_user(username, password):
                     st.success("Logged in successfully!")
-                    cookies["jwt_token"] = st.session_state.token
                     st.rerun()  # Rerun to hide the form and show the main app
     placeholder = st.empty()
     with register_tab:
@@ -153,7 +146,6 @@ if jwt_token is None:
 else:
     st.sidebar.success("You are logged in.")
     st.sidebar.button("Logout", on_click=logout_user)
-
     st.header("Homepage")
     st.write(
         "Welcome to your dashboard! Use the sidebar to navigate to your portfolio and transactions."
@@ -195,7 +187,6 @@ else:
                     )
                     if response.status_code == 201:
                         st.success("✅ Portfolio created successfully!")
-                        st.rerun()  # Refresh to show the new portfolio
                     elif response.status_code == 409:
                         error_detail = response.json().get("detail")
                         st.error(f"🚫 Creation failed: {error_detail}")
