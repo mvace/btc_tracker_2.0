@@ -2,12 +2,25 @@
 import streamlit as st
 import requests
 import pandas as pd
+from streamlit_cookies_manager import EncryptedCookieManager
+
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Portfolio Tracker", page_icon="💰", layout="wide")
 
 API_URL = "https://bitfolio.up.railway.app"
 # --- AUTHENTICATION & STATE ---
+# Initialize cookie manager
+cookies = EncryptedCookieManager(
+    password="my_secret_encryption_password",
+)
+
+# Wait until the cookies are loaded
+if not cookies.ready():
+    st.stop()
+
+# Retrieve JWT token from cookies
+jwt_token = cookies.get("jwt_token")
 
 # Initialize session state variables if they don't exist
 if "logged_in" not in st.session_state:
@@ -23,7 +36,9 @@ def login_user(username, password):
             f"{API_URL}/auth/token", data={"username": username, "password": password}
         )
         if response.status_code == 200:
-            st.session_state.token = response.json().get("access_token")
+            data = response.json()
+            st.session_state.token = data.get("access_token")
+            st.session_state.user = data.get("user")
             st.session_state.logged_in = True
             return True
         else:
@@ -48,12 +63,20 @@ def logout_user():
 st.title("💰 Portfolio & Transaction Tracker")
 
 # If user is not logged in, show login/register forms
-if not st.session_state.logged_in:
+if jwt_token is None:
     st.subheader("Welcome! Please log in or register.")
-
     login_tab, register_tab = st.tabs(["Login", "Register"])
 
     with login_tab:
+        st.write("Or, try the app with a demo account:")
+        if st.button("🚀 Use Demo Account"):
+            # Use your existing login function with the demo credentials
+            if login_user("bob@example.com", "bobpass"):
+                st.success("Logged in with Demo Account!")
+                cookies["jwt_token"] = st.session_state.token
+                # Rerun to reflect the login state
+                st.rerun()
+
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
@@ -61,6 +84,7 @@ if not st.session_state.logged_in:
             if submitted:
                 if login_user(username, password):
                     st.success("Logged in successfully!")
+                    cookies["jwt_token"] = st.session_state.token
                     st.rerun()  # Rerun to hide the form and show the main app
     placeholder = st.empty()
     with register_tab:
@@ -137,3 +161,63 @@ else:
 
     # You can add a summary or dashboard content here
     st.info("Select a page from the left to get started.")
+
+    portfolio_response = requests.get(
+        f"{API_URL}/portfolio/",
+        headers={"Authorization": f"Bearer {jwt_token}"},
+    )
+
+    if portfolio_response.status_code == 200:
+        portfolios = portfolio_response.json()
+        if portfolios:
+            df = pd.DataFrame(portfolios)
+            st.subheader("Your Portfolios")
+            st.dataframe(df)
+        else:
+            st.info("You have no portfolios yet. Use the sidebar to create one.")
+    else:
+        st.error("Failed to fetch portfolios. Please try again later.")
+
+    with st.form("create_portfolio_form", clear_on_submit=True):
+        st.subheader("Create New Portfolio")
+        portfolio_name = st.text_input("Portfolio Name")
+        submitted = st.form_submit_button("Create Portfolio")
+        if submitted:
+            if not portfolio_name:
+                st.error("⚠️ Please enter a portfolio name.")
+            else:
+                portfolio_data = {"name": portfolio_name}
+                try:
+                    response = requests.post(
+                        f"{API_URL}/portfolio/",
+                        json=portfolio_data,
+                        headers={"Authorization": f"Bearer {jwt_token}"},
+                    )
+                    if response.status_code == 201:
+                        st.success("✅ Portfolio created successfully!")
+                        st.rerun()  # Refresh to show the new portfolio
+                    elif response.status_code == 409:
+                        error_detail = response.json().get("detail")
+                        st.error(f"🚫 Creation failed: {error_detail}")
+                    else:
+                        st.error(f"An error occurred: Status {response.status_code}")
+                except requests.exceptions.ConnectionError:
+                    st.error(
+                        "🔌 Could not connect to the API. Please ensure the backend is running."
+                    )
+                except Exception as e:
+                    st.error(f"An unexpected error occurred: {e}")
+
+    transaction_response = requests.get(
+        f"{API_URL}/transaction/",
+        headers={"Authorization": f"Bearer {jwt_token}"},
+    )
+
+    if transaction_response.status_code == 200:
+        transactions = transaction_response.json()
+        if transactions:
+            df = pd.DataFrame(transactions)
+            st.subheader("Your Transactions")
+            st.dataframe(df)
+        else:
+            st.info("You have no transactions yet. Use the sidebar to create one.")
