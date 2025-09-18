@@ -57,7 +57,6 @@ jwt_token = cookies.get("jwt_token")
 
 # If user is not logged in, show login/register forms
 if not jwt_token:
-    st.write(f"JWT Token: {jwt_token}")
     st.subheader("Welcome! Please log in or register.")
 
     login_tab, register_tab = st.tabs(["Login", "Register"])
@@ -147,6 +146,7 @@ else:
     st.sidebar.success("You are logged in.")
     st.sidebar.button("Logout", on_click=logout_user)
     st.header("Homepage")
+    st.write(f"Your token: {jwt_token}")
     st.write(
         "Welcome to your dashboard! Use the sidebar to navigate to your portfolio and transactions."
     )

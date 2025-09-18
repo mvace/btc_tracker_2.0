@@ -14,7 +14,7 @@ from app.schemas.token import Token
 from app.schemas.users import UserRead, UserCreate
 from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 
 ACCESS_TOKEN_EXPIRES_MIN = settings.ACCESS_TOKEN_EXPIRES_MIN
@@ -48,7 +48,8 @@ async def register_user(
     db: AsyncSession = Depends(get_db),
 ) -> UserRead:
 
-    result = await db.execute(select(User).where(User.email == user_data.email))
+    query = select(User).where(func.lower(User.email) == user_data.email)
+    result = await db.execute(query)
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
