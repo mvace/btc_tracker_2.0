@@ -1,14 +1,19 @@
 from fastapi import APIRouter, Depends
 from typing import Annotated
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from app.database import get_db
-from app.models import Portfolio, User
-from app.schemas.portfolios import PortfolioRead, PortfolioCreate
+from app.models import Portfolio, Transaction, User
+from app.schemas.portfolios import (
+    PortfolioRead,
+    PortfolioCreate,
+    PortfolioReadWithMetrics,
+)
 from core.security import get_current_user
 from fastapi import HTTPException, status
+from decimal import Decimal
 
 router = APIRouter()
 
@@ -23,7 +28,7 @@ async def list_portfolios(
     return result.scalars().all()
 
 
-@router.get("/{portfolio_id}", response_model=PortfolioRead)
+@router.get("/{portfolio_id}", response_model=PortfolioReadWithMetrics)
 async def get_portfolio(
     portfolio_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -36,7 +41,23 @@ async def get_portfolio(
     portfolio = result.scalar_one_or_none()
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
-    return portfolio
+
+    metrics_query = select(
+        func.sum(Transaction.btc_amount).label("total_btc_amount"),
+        func.sum(Transaction.initial_value_usd).label("total_initial_value"),
+    ).where(Transaction.portfolio_id == portfolio_id)
+    metrics_result = await db.execute(metrics_query)
+    metrics = metrics_result.one()
+    # total_btc = metrics.total_btc or Decimal("0.0")
+    initial_value = metrics.total_initial_value or Decimal("0.0")
+    btc_amount = metrics.total_btc_amount or Decimal("0.0")
+
+    return PortfolioReadWithMetrics(
+        id=portfolio.id,
+        name=portfolio.name,
+        initial_value_usd=initial_value,
+        total_btc_amount=btc_amount,
+    )
 
 
 @router.post("/", response_model=PortfolioRead, status_code=201)
