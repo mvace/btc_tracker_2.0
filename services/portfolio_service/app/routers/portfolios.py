@@ -14,6 +14,7 @@ from app.schemas.portfolios import (
 from core.security import get_current_user
 from fastapi import HTTPException, status
 from decimal import Decimal
+from utils.fetch_current_btc_price import get_current_price
 
 router = APIRouter()
 
@@ -34,29 +35,38 @@ async def get_portfolio(
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Portfolio).where(
-        Portfolio.id == portfolio_id, Portfolio.user_id == current_user.id
+    # The efficient query remains the same
+    query = (
+        select(
+            Portfolio.id,
+            Portfolio.name,
+            func.sum(Transaction.initial_value_usd).label("initial_value_usd"),
+            func.sum(Transaction.btc_amount).label("total_btc_amount"),
+            (
+                func.sum(Transaction.btc_amount * Transaction.price_at_purchase)
+                / func.sum(Transaction.btc_amount)
+            ).label("average_price_usd"),
+        )
+        .join(Transaction, Portfolio.id == Transaction.portfolio_id)
+        .where(Portfolio.id == portfolio_id, Portfolio.user_id == current_user.id)
+        .group_by(Portfolio.id, Portfolio.name)
     )
+
     result = await db.execute(query)
-    portfolio = result.scalar_one_or_none()
-    if not portfolio:
+    data = result.one_or_none()
+
+    # Fail fast: check for data immediately after the query
+    if not data:
         raise HTTPException(status_code=404, detail="Portfolio not found")
 
-    metrics_query = select(
-        func.sum(Transaction.btc_amount).label("total_btc_amount"),
-        func.sum(Transaction.initial_value_usd).label("total_initial_value"),
-    ).where(Transaction.portfolio_id == portfolio_id)
-    metrics_result = await db.execute(metrics_query)
-    metrics = metrics_result.one()
-    # total_btc = metrics.total_btc or Decimal("0.0")
-    initial_value = metrics.total_initial_value or Decimal("0.0")
-    btc_amount = metrics.total_btc_amount or Decimal("0.0")
+    # Get external data (e.g., from a live price feed API)
+    current_price = get_current_price()
 
-    return PortfolioReadWithMetrics(
-        id=portfolio.id,
-        name=portfolio.name,
-        initial_value_usd=initial_value,
-        total_btc_amount=btc_amount,
+    # The model now handles all calculations.
+    # We unpack the database row and pass the current_price.
+    # data._asdict() converts the SQLAlchemy Row object to a dictionary.
+    return PortfolioReadWithMetrics.model_validate(
+        data, from_attributes=True, context={"current_price": current_price}
     )
 
 
