@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from typing import Annotated
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from app.database import get_db
@@ -38,16 +38,31 @@ async def get_portfolio(
     # The efficient query remains the same
     query = (
         select(
-            Portfolio.id,
-            Portfolio.name,
-            func.sum(Transaction.initial_value_usd).label("initial_value_usd"),
-            func.sum(Transaction.btc_amount).label("total_btc_amount"),
-            (
-                func.sum(Transaction.btc_amount * Transaction.price_at_purchase)
-                / func.sum(Transaction.btc_amount)
+            Portfolio.id.label("id"),
+            Portfolio.name.label("name"),
+            # 1. Coalesce SUM to 0 if no transactions exist (returns NULL)
+            func.coalesce(func.sum(Transaction.initial_value_usd), 0).label(
+                "initial_value_usd"
+            ),
+            func.coalesce(func.sum(Transaction.btc_amount), 0).label(
+                "total_btc_amount"
+            ),
+            # 2. Use a CASE statement to prevent division by zero for average_price
+            case(
+                (
+                    func.sum(Transaction.btc_amount) > 0,
+                    func.sum(Transaction.btc_amount * Transaction.price_at_purchase)
+                    / func.sum(Transaction.btc_amount),
+                ),
+                else_=0,
             ).label("average_price_usd"),
         )
-        .join(Transaction, Portfolio.id == Transaction.portfolio_id)
+        # 3. Use a LEFT JOIN (isouter=True) to include portfolios with no transactions
+        .join(
+            Transaction,
+            Portfolio.id == Transaction.portfolio_id,
+            isouter=True,
+        )
         .where(Portfolio.id == portfolio_id, Portfolio.user_id == current_user.id)
         .group_by(Portfolio.id, Portfolio.name)
     )
