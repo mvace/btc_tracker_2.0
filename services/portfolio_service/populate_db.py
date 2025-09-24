@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
+from random import randint
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -56,6 +57,7 @@ async def populate():
                 for j in range(2):  # 2 portfolios per user
                     p = Portfolio(
                         name=f"{user.email.split('@')[0]}_portfolio_{j+1}",
+                        goal_in_usd=Decimal(randint(100, 1000000)),
                         user_id=user.id,
                     )
                     portfolios.append(p)
@@ -67,8 +69,6 @@ async def populate():
             transactions = []
             for p in portfolios:
                 for k in range(3):  # 3 transactions per portfolio
-                    now_aware = datetime.now(timezone.utc)
-                    rounded_time = now_aware.replace(minute=0, second=0, microsecond=0)
 
                     t = Transaction(
                         portfolio_id=p.id,
@@ -77,7 +77,9 @@ async def populate():
                         initial_value_usd=Decimal("0.01")
                         * (k + 1)
                         * (Decimal("30000.00") + k * 1000),
-                        timestamp_hour_rounded=rounded_time,
+                        timestamp_hour_rounded=datetime(
+                            2020, 1, 1, 12, 0, tzinfo=timezone.utc
+                        ),
                     )
                     transactions.append(t)
                     session.add(t)

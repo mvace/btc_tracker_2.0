@@ -32,6 +32,8 @@ services:
     environment:
       # Passes the database URL to your application
       - DATABASE_URL=${DATABASE_URL}
+    volumes:
+      - .:/portfolio_service
 
 volumes:
   postgres_data:

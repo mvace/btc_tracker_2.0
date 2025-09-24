@@ -92,7 +92,11 @@ async def create_portfolio(
     db: AsyncSession = Depends(get_db),
 ) -> Portfolio:
 
-    new_portfolio = Portfolio(name=portfolio_data.name, user_id=current_user.id)
+    new_portfolio = Portfolio(
+        name=portfolio_data.name,
+        goal_in_usd=portfolio_data.goal_in_usd,
+        user_id=current_user.id,
+    )
     db.add(new_portfolio)
     try:
         await db.commit()

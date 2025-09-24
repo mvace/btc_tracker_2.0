@@ -6,11 +6,13 @@ from pydantic_core.core_schema import ValidationInfo
 
 class PortfolioCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+    goal_in_usd: Decimal = Decimal("0.0")
 
 
 class PortfolioRead(BaseModel):
     id: int
     name: str
+    goal_in_usd: Decimal = Decimal("0.0")
     model_config = {"from_attributes": True}
 
 
@@ -23,6 +25,7 @@ class PortfolioReadWithMetrics(BaseModel):
     # Fields from the database
     id: int
     name: str
+    goal_in_usd: Decimal = Decimal("0.0")
     initial_value_usd: Decimal = Decimal("0.0")
     total_btc_amount: Decimal = Decimal("0.0")
     average_price_usd: Decimal = Decimal("0.0")

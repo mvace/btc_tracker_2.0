@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
 
-from sqlalchemy import (
-    String,
-    UniqueConstraint,
-    ForeignKey,
-    func,
-)
+from sqlalchemy import String, UniqueConstraint, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
-from sqlalchemy.types import DateTime, Numeric, BigInteger, Integer
+from sqlalchemy.types import DateTime, Numeric, BigInteger, Integer, DECIMAL
+
+from decimal import Decimal
 
 from app.database import Base
 from utils.timestamp import FIRST_HISTORICAL_TIMESTAMP, get_last_valid_timestamp
@@ -54,6 +50,8 @@ class Portfolio(Base):
 
     # Mandatory human-friendly name
     name: Mapped[str | None] = mapped_column(String(100), nullable=False)
+
+    goal_in_usd: Mapped[Decimal] = mapped_column(DECIMAL(19, 0), nullable=False)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="portfolios")
