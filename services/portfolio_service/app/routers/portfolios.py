@@ -40,6 +40,7 @@ async def get_portfolio(
         select(
             Portfolio.id.label("id"),
             Portfolio.name.label("name"),
+            Portfolio.goal_in_usd.label("goal_in_usd"),
             # 1. Coalesce SUM to 0 if no transactions exist (returns NULL)
             func.coalesce(func.sum(Transaction.initial_value_usd), 0).label(
                 "initial_value_usd"

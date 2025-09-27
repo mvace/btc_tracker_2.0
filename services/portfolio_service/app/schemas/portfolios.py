@@ -2,6 +2,8 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 from datetime import datetime
 from pydantic_core.core_schema import ValidationInfo
+from pydantic import BaseModel, model_validator
+from typing import Self
 
 
 class PortfolioCreate(BaseModel):
@@ -16,16 +18,8 @@ class PortfolioRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
-from pydantic import BaseModel, model_validator
-from decimal import Decimal
-from typing import Self  # Use 'Self' for Python 3.11+
-
-
-class PortfolioReadWithMetrics(BaseModel):
+class PortfolioReadWithMetrics(PortfolioRead):
     # Fields from the database
-    id: int
-    name: str
-    goal_in_usd: Decimal = Decimal("0.0")
     initial_value_usd: Decimal = Decimal("0.0")
     total_btc_amount: Decimal = Decimal("0.0")
     average_price_usd: Decimal = Decimal("0.0")
