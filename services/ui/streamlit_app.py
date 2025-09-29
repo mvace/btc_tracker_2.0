@@ -6,7 +6,8 @@ from streamlit_cookies_manager import EncryptedCookieManager
 
 from decimal import Decimal
 import plotly.graph_objects as go
-
+from datetime import datetime, timezone
+from components.portfolio_display import show_portfolio_overview, show_goal_chart
 
 # --- COOKIE MANAGER ---
 cookies = EncryptedCookieManager(
@@ -107,41 +108,65 @@ def portfolio_detail_view(portfolio_id: int):
         portfolio = portfolio_response.json()
 
         st.header(f"Portfolio Overview: {portfolio['name'].replace('_', ' ').title()}")
+        chart_col, metrics_col = st.columns(
+            [2, 3]
+        )  # Allocate space for chart and metrics
 
-        col1, col2, col3 = st.columns(3)
+        with chart_col:
+            # Generate and display the chart
+            show_goal_chart(portfolio=portfolio)
 
-        col1.metric(
-            label="USD invested",
-            value=f"${Decimal(portfolio['initial_value_usd']):,.0f}",
-        )
+        with metrics_col:
+            show_portfolio_overview(portfolio=portfolio)
 
-        col2.metric(
-            label="Current Value (USD)",
-            value=f"${Decimal(portfolio['current_value_usd']):,.0f}",
-        )
+        st.header(f"Add new Transaction")
 
-        col3.metric(
-            label="Net P&L (USD)",
-            value=f"${Decimal(portfolio['net_result']):,.0f}",
-            delta=f"{Decimal(portfolio['roi']):.2%}",
-        )
+        with st.form("create_transaction_form"):
+            tranaction_amount = st.text_input(
+                label="BTC Amount", placeholder="e.g., 0.12345678"
+            )
+            transaction_date = st.date_input(
+                label="Date",
+                min_value=datetime(2010, 7, 17, tzinfo=timezone.utc),
+                max_value="today",
+            )
+            transaction_time = st.time_input("Time")
+            submitted = st.form_submit_button("Add Transaction")
+            tranaction_amount = tranaction_amount.replace(",", ".")
+            try:
+                tranaction_amount = Decimal(tranaction_amount)
+                min_val = Decimal("0.00000001")
+                max_val = Decimal("21000000")
 
-        col4, col5, col6 = st.columns(3)
+                if not (min_val <= tranaction_amount <= max_val):
+                    st.error(f"Amount must be between {min_val} and {max_val}.")
+            except:
+                pass
+            if submitted:
 
-        col4.metric(
-            label="Average Price (USD)",
-            value=f"${Decimal(portfolio['average_price_usd']):,.0f}",
-        )
+                merged_datetime = datetime.combine(transaction_date, transaction_time)
+                aware_datetime = merged_datetime.replace(tzinfo=timezone.utc)
+                timestamp_str = aware_datetime.isoformat()
+                if timestamp_str.endswith("+00:00"):
+                    timestamp_str = timestamp_str.replace("+00:00", "Z")
+                transaction_data = {
+                    "portfolio_id": portfolio_id,
+                    "btc_amount": str(tranaction_amount),
+                    "timestamp": timestamp_str,
+                }
+                try:
+                    response = requests.post(
+                        f"{API_URL}/transaction/",
+                        json=transaction_data,
+                        headers={"Authorization": f"Bearer {jwt_token}"},
+                    )
+                    if response.status_code == 201:
+                        st.success("✅ Transaction created successfully!")
+                        st.rerun()
 
-        col5.metric(
-            label="ROI",
-            value=f"{Decimal(portfolio['roi']):.2%}",
-        )
+                except Exception as e:
+                    st.error(f"An unexpected error occurred: {e}")
 
-        col6.metric(
-            label="Total BTC Holdings",
-            value=f"{Decimal(portfolio['total_btc_amount']):.8f} BTC",
-        )
     elif portfolio_response.status_code == 401:
         logout_user()
         st.rerun()
@@ -252,12 +277,16 @@ else:
         with st.form("create_portfolio_form", clear_on_submit=True):
             st.subheader("Create New Portfolio")
             portfolio_name = st.text_input("Portfolio Name")
+            portfolio_goal = st.text_input("Your investment goal in USD")
             submitted = st.form_submit_button("Create Portfolio")
             if submitted:
                 if not portfolio_name:
                     st.error("⚠️ Please enter a portfolio name.")
                 else:
-                    portfolio_data = {"name": portfolio_name}
+                    portfolio_data = {
+                        "name": portfolio_name,
+                        "goal_in_usd": portfolio_goal,
+                    }
                     try:
                         response = requests.post(
                             f"{API_URL}/portfolio/",
