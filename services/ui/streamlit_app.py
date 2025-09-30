@@ -8,6 +8,7 @@ from decimal import Decimal
 import plotly.graph_objects as go
 from datetime import datetime, timezone
 from components.portfolio_display import show_portfolio_overview, show_goal_chart
+import api_client
 
 # --- COOKIE MANAGER ---
 cookies = EncryptedCookieManager(
@@ -43,6 +44,7 @@ def login_user(username, password):
             return True
 
         else:
+
             st.error(f"Login failed: {response.json().get('detail')}")
             return False
     except requests.exceptions.ConnectionError as e:
@@ -99,14 +101,11 @@ def portfolio_detail_view(portfolio_id: int):
         st.query_params.clear()
         st.rerun()  # Optional: Explicitly rerun for immediate effect
 
-    portfolio_response = requests.get(
-        f"{API_URL}/portfolio/{portfolio_id}",
-        headers={"Authorization": f"Bearer {jwt_token}"},
+    portfolio, status = api_client.get_portfolio_details(
+        api_url=API_URL, token=jwt_token, portfolio_id=portfolio_id
     )
 
-    if portfolio_response.status_code == 200:
-        portfolio = portfolio_response.json()
-
+    if status == 200:
         st.header(f"Portfolio Overview: {portfolio['name'].replace('_', ' ').title()}")
         chart_col, metrics_col = st.columns(
             [2, 3]
@@ -167,7 +166,7 @@ def portfolio_detail_view(portfolio_id: int):
                 except Exception as e:
                     st.error(f"An unexpected error occurred: {e}")
 
-    elif portfolio_response.status_code == 401:
+    elif status == 401:
         logout_user()
         st.rerun()
 
