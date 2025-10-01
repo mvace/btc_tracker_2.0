@@ -2,26 +2,19 @@
 import streamlit as st
 import requests
 import pandas as pd
-from streamlit_cookies_manager import EncryptedCookieManager
-
 from decimal import Decimal
 import plotly.graph_objects as go
 from datetime import datetime, timezone
-from components.portfolio_display import show_portfolio_overview, show_goal_chart
+from components.metrics import show_portfolio_overview, show_goal_chart
 import api_client
 
-# --- COOKIE MANAGER ---
-cookies = EncryptedCookieManager(
-    password="my_secret_encryption_password",
-)
-if not cookies.ready():
-    st.stop()
+import auth
+
 
 # --- CONFIGURATION ---
 st.set_page_config(
     page_title="Bitcoin Portfolio Tracker", page_icon="💰", layout="wide"
 )
-
 API_URL = "https://bitfolio.up.railway.app"
 # --- AUTHENTICATION & STATE ---
 
@@ -30,34 +23,6 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "token" not in st.session_state:
     st.session_state.token = ""
-
-
-def login_user(username, password):
-    """Function to log in a user and get a JWT token."""
-    try:
-        response = requests.post(
-            f"{API_URL}/auth/token", data={"username": username, "password": password}
-        )
-        if response.status_code == 200:
-            data = response.json()
-            cookies["jwt_token"] = data.get("access_token")
-            return True
-
-        else:
-
-            st.error(f"Login failed: {response.json().get('detail')}")
-            return False
-    except requests.exceptions.ConnectionError as e:
-        st.error(
-            f"Connection Error: Could not connect to the API. Is the backend running? Details: {e}"
-        )
-
-        return False
-
-
-def logout_user():
-    """Function to log out a user."""
-    del cookies["jwt_token"]
 
 
 def portfolio_list_view():
@@ -85,11 +50,11 @@ def portfolio_list_view():
                     # A unique key is crucial for buttons inside a loop.
                     if st.button("View Details", key=f"view_{portfolio['id']}"):
                         # Set the query parameter to the portfolio id
-                        st.query_params["id"] = portfolio["id"]
+                        st.query_params["portfolio_id"] = portfolio["id"]
                         st.rerun()
                 st.divider()
     elif portfolio_response.status_code == 401:
-        logout_user()
+        auth.logout_user()
         st.rerun()
     else:
         st.error("Failed to retrieve portfolios.")
@@ -102,7 +67,7 @@ def portfolio_detail_view(portfolio_id: int):
         st.rerun()  # Optional: Explicitly rerun for immediate effect
 
     portfolio, status = api_client.get_portfolio_details(
-        api_url=API_URL, token=jwt_token, portfolio_id=portfolio_id
+        token=jwt_token, portfolio_id=portfolio_id
     )
 
     if status == 200:
@@ -167,7 +132,7 @@ def portfolio_detail_view(portfolio_id: int):
                     st.error(f"An unexpected error occurred: {e}")
 
     elif status == 401:
-        logout_user()
+        auth.logout_user()
         st.rerun()
 
     else:
@@ -177,7 +142,7 @@ def portfolio_detail_view(portfolio_id: int):
 # --- UI ---
 
 st.title("💰 Portfolio & Transaction Tracker")
-jwt_token = cookies.get("jwt_token")
+jwt_token = auth.get_token()
 
 # If user is not logged in, show login/register forms
 if not jwt_token:
@@ -189,7 +154,7 @@ if not jwt_token:
         st.write("Or, try the app with a demo account:")
         if st.button("🚀 Use Demo Account"):
             # Use your existing login function with the demo credentials
-            if login_user("bob@example.com", "bobpass"):
+            if auth.login_user("bob@example.com", "bobpass"):
                 st.rerun()
 
         with st.form("login_form"):
@@ -197,7 +162,7 @@ if not jwt_token:
             password = st.text_input("Password", type="password")
             submitted = st.form_submit_button("Login")
             if submitted:
-                if login_user(username, password):
+                if auth.login_user(username, password):
                     st.success("Logged in successfully!")
                     st.rerun()  # Rerun to hide the form and show the main app
     placeholder = st.empty()
@@ -266,11 +231,11 @@ if not jwt_token:
 # If user IS logged in, show the main part of the app
 else:
     st.sidebar.success("You are logged in.")
-    st.sidebar.button("Logout", on_click=logout_user)
+    st.sidebar.button("Logout", on_click=auth.logout_user)
     st.sidebar.write(f"Your token: {jwt_token}")
     query_params = st.query_params
 
-    if "id" not in query_params:
+    if "portfolio_id" not in query_params:
         portfolio_list_view()
 
         with st.form("create_portfolio_form", clear_on_submit=True):
@@ -323,5 +288,5 @@ else:
             else:
                 st.info("You have no transactions yet. Use the sidebar to create one.")
     else:
-        portfolio_id = int(query_params["id"])
+        portfolio_id = int(query_params["portfolio_id"])
         portfolio_detail_view(portfolio_id)

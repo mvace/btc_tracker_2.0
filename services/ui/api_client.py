@@ -1,14 +1,18 @@
 import requests
+import streamlit as st
 
 
-def get_portfolio_list(api_url: str, token: str):
+API_URL = st.secrets["API_URL"]
+
+
+def get_portfolio_list(token: str):
     pass
 
 
-def get_portfolio_details(api_url: str, token: str, portfolio_id):
+def get_portfolio_details(token: str, portfolio_id):
     try:
         response = requests.get(
-            f"{api_url}/portfolio/{portfolio_id}",
+            f"{API_URL}/portfolio/{portfolio_id}",
             headers={"Authorization": f"Bearer {token}"},
         )
 
@@ -21,27 +25,27 @@ def get_portfolio_details(api_url: str, token: str, portfolio_id):
         return None, 503
 
 
-def create_portfolio(api_url: str, token: str, portfolio_id):
+def create_portfolio(token: str, portfolio_id):
     pass
 
 
-def update_portfolio(api_url: str, token: str, portfolio_id):
+def update_portfolio(token: str, portfolio_id):
     pass
 
 
-def delete_portfolio(api_url: str, token: str, portfolio_id):
+def delete_portfolio(token: str, portfolio_id):
     pass
 
 
-def get_transaction_list(api_url: str, token: str):
+def get_transaction_list(token: str):
     pass
 
 
-def get_transaction_details(api_url: str, token: str, transaction_id: int):
+def get_transaction_details(token: str, transaction_id: int):
     pass
 
 
-def post_transaction(api_url: str, token: str, payload: dict):
+def post_transaction(token: str, payload: dict):
     try:
         response = requests.post(
             f"{api_url}/transaction/",
@@ -55,13 +59,13 @@ def post_transaction(api_url: str, token: str, payload: dict):
         return None, 503
 
 
-def update_transaction(api_url: str, token: str, transaction_id):
+def update_transaction(token: str, transaction_id):
     pass
 
 
-def delete_transaction(api_url: str, token: str, transaction_id):
+def delete_transaction(token: str, transaction_id):
     pass
 
 
-def post_login(api_url: str, username: str, password: str):
+def post_login(username: str, password: str):
     pass
