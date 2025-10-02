@@ -3,10 +3,10 @@ from decimal import Decimal
 import plotly.graph_objects as go
 from datetime import datetime, timezone
 import requests
-from metrics import 
+from components.timestamp import merged_timestamp
 
 
-def transaction_create_form(portfolio: dict, api_url: str, token: str):
+def transaction_create_form(portfolio_id):
     with st.form("create_transaction_form"):
         tranaction_amount = st.text_input(
             label="BTC Amount", placeholder="e.g., 0.12345678"
@@ -29,27 +29,11 @@ def transaction_create_form(portfolio: dict, api_url: str, token: str):
         except:
             pass
         if submitted:
+            timestamp = merged_timestamp(transaction_date, transaction_time)
 
-            merged_datetime = datetime.combine(transaction_date, transaction_time)
-            aware_datetime = merged_datetime.replace(tzinfo=timezone.utc)
-            timestamp_str = aware_datetime.isoformat()
-            if timestamp_str.endswith("+00:00"):
-                timestamp_str = timestamp_str.replace("+00:00", "Z")
             transaction_data = {
-                "portfolio_id": portfolio.id,
+                "portfolio_id": portfolio_id,
                 "btc_amount": str(tranaction_amount),
-                "timestamp": timestamp_str,
+                "timestamp": timestamp,
             }
-            try:
-                response = requests.post(
-                    f"{api_url}/transaction/",
-                    json=transaction_data,
-                    headers={"Authorization": f"Bearer {token}"},
-                )
-                if response.status_code == 201:
-                    st.success("✅ Transaction created successfully!")
-                    st.rerun()
-
-            except Exception as e:
-                st.error(f"An unexpected error occurred: {e}")
-
+            return transaction_data

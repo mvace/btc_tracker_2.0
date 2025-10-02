@@ -1,6 +1,6 @@
 import requests
 import streamlit as st
-
+import auth
 
 API_URL = st.secrets["API_URL"]
 
@@ -48,15 +48,19 @@ def get_transaction_details(token: str, transaction_id: int):
 def post_transaction(token: str, payload: dict):
     try:
         response = requests.post(
-            f"{api_url}/transaction/",
+            f"{API_URL}/transaction/",
             json=payload,
             headers={"Authorization": f"Bearer {token}"},
         )
+        try:
+            data = response.json()
+        except requests.exceptions.JSONDecodeError:
+            data = {"detail": response.text}
 
-        return response.status_code
+        return response.status_code, data
 
     except requests.exceptions.ConnectionError:
-        return None, 503
+        return 503, {"detail": "Connection to the API failed."}
 
 
 def update_transaction(token: str, transaction_id):

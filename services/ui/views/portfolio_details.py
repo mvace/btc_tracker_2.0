@@ -1,6 +1,9 @@
 import streamlit as st
 from datetime import datetime, timezone
-
+from components.metrics import show_goal_chart, show_portfolio_overview
+from components.forms import transaction_create_form
+import api_client
+import auth
 
 
 def portfolio_detail_view(portfolio_id: int, token: str):
@@ -9,14 +12,11 @@ def portfolio_detail_view(portfolio_id: int, token: str):
         st.query_params.clear()
         st.rerun()  # Optional: Explicitly rerun for immediate effect
 
-    portfolio_response = requests.get(
-        f"{API_URL}/portfolio/{portfolio_id}",
-        headers={"Authorization": f"Bearer {token}"},
+    portfolio, status = api_client.get_portfolio_details(
+        token, portfolio_id=portfolio_id
     )
 
-    if portfolio_response.status_code == 200:
-        portfolio = portfolio_response.json()
-
+    if status == 200:
         st.header(f"Portfolio Overview: {portfolio['name'].replace('_', ' ').title()}")
         chart_col, metrics_col = st.columns(
             [2, 3]
@@ -31,54 +31,25 @@ def portfolio_detail_view(portfolio_id: int, token: str):
 
         st.header(f"Add new Transaction")
 
-        with st.form("create_transaction_form"):
-            tranaction_amount = st.text_input(
-                label="BTC Amount", placeholder="e.g., 0.12345678"
-            )
-            transaction_date = st.date_input(
-                label="Date",
-                min_value=datetime(2010, 7, 17, tzinfo=timezone.utc),
-                max_value="today",
-            )
-            transaction_time = st.time_input("Time")
-            submitted = st.form_submit_button("Add Transaction")
-            tranaction_amount = tranaction_amount.replace(",", ".")
-            try:
-                tranaction_amount = Decimal(tranaction_amount)
-                min_val = Decimal("0.00000001")
-                max_val = Decimal("21000000")
+        transaction_data = transaction_create_form(portfolio_id)
+        status, data = api_client.post_transaction(token, payload=transaction_data)
+        if transaction_data:
+            if status == 201:
+                # You might get the created transaction back in `data`
+                transaction_id = data.get("id", "N/A")
+                st.success(f"✅ Transaction created successfully! ID: {transaction_id}")
+            elif status in [400, 401, 403]:
+                # Extract the detailed error message from the API response
+                error_message = data.get("detail", "An unknown client error occurred.")
+                st.error(f"❌ Error: {error_message}")
+            elif status == 503:
+                st.error(f"🔌 Service Unavailable: {data.get('detail')}")
+            else:
+                # A catch-all for other server-side errors
+                st.error(f"An unexpected server error occurred. Status code: {status}")
 
-                if not (min_val <= tranaction_amount <= max_val):
-                    st.error(f"Amount must be between {min_val} and {max_val}.")
-            except:
-                pass
-            if submitted:
-
-                merged_datetime = datetime.combine(transaction_date, transaction_time)
-                aware_datetime = merged_datetime.replace(tzinfo=timezone.utc)
-                timestamp_str = aware_datetime.isoformat()
-                if timestamp_str.endswith("+00:00"):
-                    timestamp_str = timestamp_str.replace("+00:00", "Z")
-                transaction_data = {
-                    "portfolio_id": portfolio_id,
-                    "btc_amount": str(tranaction_amount),
-                    "timestamp": timestamp_str,
-                }
-                try:
-                    response = requests.post(
-                        f"{API_URL}/transaction/",
-                        json=transaction_data,
-                        headers={"Authorization": f"Bearer {jwt_token}"},
-                    )
-                    if response.status_code == 201:
-                        st.success("✅ Transaction created successfully!")
-                        st.rerun()
-
-                except Exception as e:
-                    st.error(f"An unexpected error occurred: {e}")
-
-    elif portfolio_response.status_code == 401:
-        logout_user()
+    elif status == 401:
+        auth.logout_user()
         st.rerun()
 
     else:
