@@ -1,33 +1,25 @@
-def portfolio_list_view():
+import streamlit as st
+import auth
+import api_client
+from components.metrics import show_portfolio_list_metrics
+
+
+def portfolio_list_view(token: str):
     """Display the list of all portfolios."""
 
-    portfolio_response = requests.get(
-        f"{API_URL}/portfolio/",
-        headers={"Authorization": f"Bearer {jwt_token}"},
-    )
+    status, data = api_client.get_portfolio_list(token)
 
-    if portfolio_response.status_code == 200:
-        portfolios = portfolio_response.json()
-        st.header(f"You have {len(portfolios)} portfolios.")
-        if not portfolios:
+    if status == 200:
+
+        st.header(f"You have {len(data)} portfolios.")
+        if not data:
             st.info("You have no portfolios yet. Create one using the form below.")
         else:
-            for portfolio in portfolios:
-                col1, col2, col3 = st.columns([3, 3, 2])
-                with col1:
-                    st.write(f"**Portfolio ID:** {portfolio['id']}")
-                with col2:
-                    st.write(f"**Name:** {portfolio['name']}")
-                with col3:
-                    # CHANGE #1: Use st.button instead of st.link_button
-                    # A unique key is crucial for buttons inside a loop.
-                    if st.button("View Details", key=f"view_{portfolio['id']}"):
-                        # Set the query parameter to the portfolio id
-                        st.query_params["portfolio_id"] = portfolio["id"]
-                        st.rerun()
-                st.divider()
-    elif portfolio_response.status_code == 401:
-        auth.logout_user(cookies=cookies)
+            for portfolio in data:
+                show_portfolio_list_metrics(portfolio)
+
+    elif status == 401:
+        auth.logout_user()
         st.rerun()
     else:
         st.error("Failed to retrieve portfolios.")

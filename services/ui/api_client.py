@@ -6,7 +6,23 @@ API_URL = st.secrets["API_URL"]
 
 
 def get_portfolio_list(token: str):
-    pass
+    try:
+        response = requests.get(
+            f"{API_URL}/portfolio/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        if response.status_code == 200:
+            return 200, response.json()
+        else:
+            try:
+                data = response.json()
+            except requests.exceptions.JSONDecodeError:
+                data = {"detail": response.text}
+            return response.status_code, data
+
+    except requests.exceptions.ConnectionError:
+        return 503, {"detail": "Connection to the API failed."}
 
 
 def get_portfolio_details(token: str, portfolio_id):
@@ -17,12 +33,16 @@ def get_portfolio_details(token: str, portfolio_id):
         )
 
         if response.status_code == 200:
-            return response.json(), 200
+            return 200, response.json()
         else:
-            return None, response.status_code
+            try:
+                data = response.json()
+            except requests.exceptions.JSONDecodeError:
+                data = {"detail": response.text}
+            return response.status_code, data
 
     except requests.exceptions.ConnectionError:
-        return None, 503
+        return 503, {"detail": "Connection to the API failed."}
 
 
 def create_portfolio(token: str, portfolio_id):

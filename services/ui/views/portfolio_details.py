@@ -12,22 +12,22 @@ def portfolio_detail_view(portfolio_id: int, token: str):
         st.query_params.clear()
         st.rerun()  # Optional: Explicitly rerun for immediate effect
 
-    portfolio, status = api_client.get_portfolio_details(
+    status, data = api_client.get_portfolio_details(
         token, portfolio_id=portfolio_id
     )
 
     if status == 200:
-        st.header(f"Portfolio Overview: {portfolio['name'].replace('_', ' ').title()}")
+        st.header(f"Portfolio Overview: {data['name'].replace('_', ' ').title()}")
         chart_col, metrics_col = st.columns(
             [2, 3]
         )  # Allocate space for chart and metrics
 
         with chart_col:
             # Generate and display the chart
-            show_goal_chart(portfolio=portfolio)
+            show_goal_chart(portfolio=data)
 
         with metrics_col:
-            show_portfolio_overview(portfolio=portfolio)
+            show_portfolio_overview(portfolio=data)
 
         st.header(f"Add new Transaction")
 

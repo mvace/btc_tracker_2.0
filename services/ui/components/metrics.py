@@ -138,3 +138,19 @@ def create_goal_chart(current_value_usd, goal_in_usd, initial_value_usd):
         margin=dict(l=10, r=10, t=50, b=10),
     )
     return fig
+
+
+def show_portfolio_list_metrics(portfolio):
+    col1, col2, col3 = st.columns([3, 3, 2])
+    with col1:
+        st.write(f"**Portfolio ID:** {portfolio['id']}")
+    with col2:
+        st.write(f"**Name:** {portfolio['name']}")
+    with col3:
+        # CHANGE #1: Use st.button instead of st.link_button
+        # A unique key is crucial for buttons inside a loop.
+        if st.button("View Details", key=f"view_{portfolio['id']}"):
+            # Set the query parameter to the portfolio id
+            st.query_params["portfolio_id"] = portfolio["id"]
+            st.rerun()
+    st.divider()
