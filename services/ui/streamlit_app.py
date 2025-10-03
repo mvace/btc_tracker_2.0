@@ -5,7 +5,8 @@ import pandas as pd
 
 from views.portfolio_details import portfolio_detail_view
 from views.portfolio_list import portfolio_list_view
-
+from views.transaction_list import transaction_list_view
+from components.forms import create_portfolio_form
 import api_client
 
 import auth
@@ -123,55 +124,25 @@ else:
     if "portfolio_id" not in query_params:
         portfolio_list_view(token=jwt_token)
 
-        with st.form("create_portfolio_form", clear_on_submit=True):
-            st.subheader("Create New Portfolio")
-            portfolio_name = st.text_input("Portfolio Name")
-            portfolio_goal = st.text_input("Your investment goal in USD")
-            submitted = st.form_submit_button("Create Portfolio")
-            if submitted:
-                if not portfolio_name:
-                    st.error("⚠️ Please enter a portfolio name.")
-                else:
-                    portfolio_data = {
-                        "name": portfolio_name,
-                        "goal_in_usd": portfolio_goal,
-                    }
-                    try:
-                        response = requests.post(
-                            f"{API_URL}/portfolio/",
-                            json=portfolio_data,
-                            headers={"Authorization": f"Bearer {jwt_token}"},
-                        )
-                        if response.status_code == 201:
-                            st.success("✅ Portfolio created successfully!")
-                            st.rerun()
-                        elif response.status_code == 409:
-                            error_detail = response.json().get("detail")
-                            st.error(f"🚫 Creation failed: {error_detail}")
-                        else:
-                            st.error(
-                                f"An error occurred: Status {response.status_code}"
-                            )
-                    except requests.exceptions.ConnectionError:
-                        st.error(
-                            "🔌 Could not connect to the API. Please ensure the backend is running."
-                        )
-                    except Exception as e:
-                        st.error(f"An unexpected error occurred: {e}")
-
-        transaction_response = requests.get(
-            f"{API_URL}/transaction/",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-        )
-
-        if transaction_response.status_code == 200:
-            transactions = transaction_response.json()
-            if transactions:
-                df = pd.DataFrame(transactions)
-                st.subheader("Your Transactions")
-                st.dataframe(df)
+        portfolio_data = create_portfolio_form()
+        if portfolio_data:
+            status, data = api_client.create_portfolio(
+                token=jwt_token, payload=portfolio_data
+            )
+            if status == 201:
+                st.success(f"✅ Portfolio created successfully!")
+            elif status in [400, 401, 403, 422]:
+                # Extract the detailed error message from the API response
+                error_message = data.get("detail", "An unknown client error occurred.")
+                st.error(f"❌ Error: {error_message}")
+            elif status == 503:
+                st.error(f"🔌 Service Unavailable: {data.get('detail')}")
             else:
-                st.info("You have no transactions yet. Use the sidebar to create one.")
+                # A catch-all for other server-side errors
+                st.error(f"An unexpected server error occurred. Status code: {status}")
+
+        transaction_list_view(token=jwt_token)
+
     else:
         portfolio_id = int(query_params["portfolio_id"])
         portfolio_detail_view(portfolio_id, jwt_token)

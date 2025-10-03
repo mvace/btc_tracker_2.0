@@ -6,7 +6,7 @@ import requests
 from components.timestamp import merged_timestamp
 
 
-def transaction_create_form(portfolio_id):
+def create_transaction_form(portfolio_id):
     with st.form("create_transaction_form"):
         tranaction_amount = st.text_input(
             label="BTC Amount", placeholder="e.g., 0.12345678"
@@ -37,3 +37,20 @@ def transaction_create_form(portfolio_id):
                 "timestamp": timestamp,
             }
             return transaction_data
+
+
+def create_portfolio_form():
+    with st.form("create_portfolio_form", clear_on_submit=True):
+        st.subheader("Create New Portfolio")
+        portfolio_name = st.text_input("Portfolio Name")
+        portfolio_goal = st.text_input("Your investment goal in USD")
+        submitted = st.form_submit_button("Create Portfolio")
+        if submitted:
+            if not portfolio_name or not portfolio_goal:
+                st.error("⚠️ Please fill the form correctly")
+            else:
+                portfolio_data = {
+                    "name": portfolio_name,
+                    "goal_in_usd": portfolio_goal,
+                }
+                return portfolio_data

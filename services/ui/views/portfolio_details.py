@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime, timezone
 from components.metrics import show_goal_chart, show_portfolio_overview
-from components.forms import transaction_create_form
+from components.forms import create_transaction_form
 import api_client
 import auth
 
@@ -12,9 +12,7 @@ def portfolio_detail_view(portfolio_id: int, token: str):
         st.query_params.clear()
         st.rerun()  # Optional: Explicitly rerun for immediate effect
 
-    status, data = api_client.get_portfolio_details(
-        token, portfolio_id=portfolio_id
-    )
+    status, data = api_client.get_portfolio_details(token, portfolio_id=portfolio_id)
 
     if status == 200:
         st.header(f"Portfolio Overview: {data['name'].replace('_', ' ').title()}")
@@ -31,7 +29,7 @@ def portfolio_detail_view(portfolio_id: int, token: str):
 
         st.header(f"Add new Transaction")
 
-        transaction_data = transaction_create_form(portfolio_id)
+        transaction_data = create_transaction_form(portfolio_id)
         status, data = api_client.post_transaction(token, payload=transaction_data)
         if transaction_data:
             if status == 201:

@@ -45,8 +45,23 @@ def get_portfolio_details(token: str, portfolio_id):
         return 503, {"detail": "Connection to the API failed."}
 
 
-def create_portfolio(token: str, portfolio_id):
-    pass
+def create_portfolio(token: str, payload: dict):
+    try:
+        response = requests.post(
+            f"{API_URL}/portfolio/",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        try:
+            data = response.json()
+        except requests.exceptions.JSONDecodeError:
+            data = {"detail": response.text}
+
+        return response.status_code, data
+
+    except requests.exceptions.ConnectionError:
+        return 503, {"detail": "Connection to the API failed."}
 
 
 def update_portfolio(token: str, portfolio_id):
@@ -58,7 +73,22 @@ def delete_portfolio(token: str, portfolio_id):
 
 
 def get_transaction_list(token: str):
-    pass
+
+    try:
+        response = requests.get(
+            f"{API_URL}/transaction/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        try:
+            data = response.json()
+        except requests.exceptions.JSONDecodeError:
+            data = {"detail": response.text}
+
+        return response.status_code, data
+
+    except requests.exceptions.ConnectionError:
+        return 503, {"detail": "Connection to the API failed."}
 
 
 def get_transaction_details(token: str, transaction_id: int):
