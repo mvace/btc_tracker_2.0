@@ -95,7 +95,7 @@ def get_transaction_details(token: str, transaction_id: int):
     pass
 
 
-def post_transaction(token: str, payload: dict):
+def create_transaction(token: str, payload: dict):
     try:
         response = requests.post(
             f"{API_URL}/transaction/",

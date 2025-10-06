@@ -6,7 +6,9 @@ import pandas as pd
 from views.portfolio_details import portfolio_detail_view
 from views.portfolio_list import portfolio_list_view
 from views.transaction_list import transaction_list_view
+from views.portfolio_create import portfolio_create_view
 from components.forms import create_portfolio_form
+
 import api_client
 
 import auth
@@ -126,20 +128,7 @@ else:
 
         portfolio_data = create_portfolio_form()
         if portfolio_data:
-            status, data = api_client.create_portfolio(
-                token=jwt_token, payload=portfolio_data
-            )
-            if status == 201:
-                st.success(f"✅ Portfolio created successfully!")
-            elif status in [400, 401, 403, 422]:
-                # Extract the detailed error message from the API response
-                error_message = data.get("detail", "An unknown client error occurred.")
-                st.error(f"❌ Error: {error_message}")
-            elif status == 503:
-                st.error(f"🔌 Service Unavailable: {data.get('detail')}")
-            else:
-                # A catch-all for other server-side errors
-                st.error(f"An unexpected server error occurred. Status code: {status}")
+            portfolio_create_view(token=jwt_token, payload=portfolio_data)
 
         transaction_list_view(token=jwt_token)
 

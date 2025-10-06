@@ -30,7 +30,7 @@ def portfolio_detail_view(portfolio_id: int, token: str):
         st.header(f"Add new Transaction")
 
         transaction_data = create_transaction_form(portfolio_id)
-        status, data = api_client.post_transaction(token, payload=transaction_data)
+        status, data = api_client.create_transaction(token, payload=transaction_data)
         if transaction_data:
             if status == 201:
                 # You might get the created transaction back in `data`
