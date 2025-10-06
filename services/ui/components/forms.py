@@ -61,4 +61,36 @@ def login_form():
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Login")
+        # Always return the status and the data
         return submitted, username, password
+
+
+def register_form():
+    with st.form("register_form", clear_on_submit=True):
+        st.write("Please fill in the details below to register.")
+
+        email = st.text_input("Email")
+        password = st.text_input(
+            "Password",
+            type="password",
+            help="Password must be at least 8 characters long.",
+        )
+        confirm_password = st.text_input("Confirm Password", type="password")
+
+        # The submit button for the form
+        submitted = st.form_submit_button("Register")
+
+        # --- Form Submission Logic ---
+        if submitted:
+            # 1. Client-side validation for a better user experience
+            if not email or not password or not confirm_password:
+                st.error("⚠️ Please fill out all fields.")
+            elif password != confirm_password:
+                st.error("⚠️ Passwords do not match. Please try again.")
+            elif len(password) < 8:
+                st.error("⚠️ Password must be at least 8 characters long.")
+            else:
+                # 2. Prepare the data payload for the API
+                user_data = {"email": email, "password": password}
+                return submitted, user_data
+    return False, None
