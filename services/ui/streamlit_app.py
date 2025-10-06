@@ -41,7 +41,6 @@ if not jwt_token:
 
     with login_tab:
         login_view()
-    placeholder = st.empty()
     with register_tab:
         with st.form("register_form", clear_on_submit=True):
             st.write("Please fill in the details below to register.")
@@ -61,48 +60,43 @@ if not jwt_token:
     if submitted:
         # 1. Client-side validation for a better user experience
         if not email or not password or not confirm_password:
-            placeholder.error("⚠️ Please fill out all fields.")
+            st.error("⚠️ Please fill out all fields.")
         elif password != confirm_password:
-            placeholder.error("⚠️ Passwords do not match. Please try again.")
+            st.error("⚠️ Passwords do not match. Please try again.")
         elif len(password) < 8:
-            placeholder.error("⚠️ Password must be at least 8 characters long.")
+            st.error("⚠️ Password must be at least 8 characters long.")
         else:
             # 2. Prepare the data payload for the API
             user_data = {"email": email, "password": password}
 
             # 3. Send the request to the FastAPI endpoint
             try:
-                response = requests.post(f"{API_URL}/auth/register", json=user_data)
-
+                status, data = auth.register_user(user_data)
                 # 4. Handle the API response
                 # SUCCESS: Corresponds to status_code=201
-                if response.status_code == 201:
-                    placeholder.success(
-                        "✅ Registration successful! You can now log in."
-                    )
+                if status == 201:
+                    st.success("✅ Registration successful! You can now log in.")
 
                 # FAILURE: Corresponds to HTTPException with status_code=400
-                elif response.status_code == 400:
-                    error_detail = response.json().get("detail")
-                    placeholder.error(f"🚫 Registration failed: {error_detail}")
+                elif status == 400:
+                    error_detail = data.get("detail")
+                    st.error(f"🚫 Registration failed: {error_detail}")
 
                 # Handle other potential errors (like validation errors from Pydantic)
-                elif response.status_code == 422:
-                    placeholder.error(
+                elif status == 422:
+                    st.error(
                         "🚫 Invalid data provided. Please check your email format."
                     )
 
                 else:
-                    placeholder.error(
-                        f"An server error occurred: Status {response.status_code}"
-                    )
+                    st.error(f"An server error occurred: Status {status}")
 
             except requests.exceptions.ConnectionError:
-                placeholder.error(
+                st.error(
                     "🔌 Could not connect to the API. Please ensure the backend is running."
                 )
             except Exception as e:
-                placeholder.error(f"An unexpected error occurred: {e}")
+                st.error(f"An unexpected error occurred: {e}")
 
 # If user IS logged in, show the main part of the app
 else:
