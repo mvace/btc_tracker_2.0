@@ -54,3 +54,11 @@ def create_portfolio_form():
                     "goal_in_usd": portfolio_goal,
                 }
                 return portfolio_data
+
+
+def login_form():
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Login")
+        return submitted, username, password

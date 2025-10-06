@@ -7,6 +7,7 @@ from views.portfolio_details import portfolio_detail_view
 from views.portfolio_list import portfolio_list_view
 from views.transaction_list import transaction_list_view
 from views.portfolio_create import portfolio_create_view
+from views.login_view import login_view
 from components.forms import create_portfolio_form
 
 import api_client
@@ -39,20 +40,7 @@ if not jwt_token:
     login_tab, register_tab = st.tabs(["Login", "Register"])
 
     with login_tab:
-        st.write("Or, try the app with a demo account:")
-        if st.button("🚀 Use Demo Account"):
-            # Use your existing login function with the demo credentials
-            if auth.login_user("bob@example.com", "bobpass"):
-                st.rerun()
-
-        with st.form("login_form"):
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Login")
-            if submitted:
-                if auth.login_user(username, password):
-                    st.success("Logged in successfully!")
-                    st.rerun()  # Rerun to hide the form and show the main app
+        login_view()
     placeholder = st.empty()
     with register_tab:
         with st.form("register_form", clear_on_submit=True):
