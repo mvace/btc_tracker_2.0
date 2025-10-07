@@ -29,7 +29,7 @@ API_URL = "https://bitfolio.up.railway.app"
 
 # --- UI ---
 
-st.title("💰 Portfolio & Transaction Tracker")
+st.title("💰 Bitcoin Portfolio & Transaction Tracker")
 jwt_token = auth.get_token()
 
 # If user is not logged in, show login/register forms

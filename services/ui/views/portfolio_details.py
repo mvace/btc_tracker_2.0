@@ -1,6 +1,10 @@
 import streamlit as st
 from datetime import datetime, timezone
-from components.metrics import show_goal_chart, show_portfolio_overview
+from components.metrics import (
+    show_goal_chart,
+    show_portfolio_overview,
+    create_simple_donut_chart,
+)
 from components.forms import create_transaction_form
 import api_client
 import auth
@@ -15,17 +19,15 @@ def portfolio_detail_view(portfolio_id: int, token: str):
     status, data = api_client.get_portfolio_details(token, portfolio_id=portfolio_id)
 
     if status == 200:
-        st.header(f"Portfolio Overview: {data['name'].replace('_', ' ').title()}")
-        chart_col, metrics_col = st.columns(
-            [2, 3]
+        st.header(f"Portfolio: {data['name'].replace('_', ' ').title()}")
+        metrics_col, chart_col = st.columns(
+            [3, 2]
         )  # Allocate space for chart and metrics
-
-        with chart_col:
-            # Generate and display the chart
-            show_goal_chart(portfolio=data)
-
         with metrics_col:
             show_portfolio_overview(portfolio=data)
+
+        with chart_col:
+            show_goal_chart(portfolio=data)
 
         st.header(f"Add new Transaction")
 

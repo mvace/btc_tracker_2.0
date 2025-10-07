@@ -1,156 +1,167 @@
 import streamlit as st
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import plotly.graph_objects as go
 
 
-def show_goal_chart(portfolio: dict):
-
-    fig = create_goal_chart(
-        portfolio["current_value_usd"],
-        portfolio["goal_in_usd"],
-        portfolio["initial_value_usd"],
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def show_portfolio_overview(portfolio: dict):
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric(
-        label="USD invested",
-        value=f"${Decimal(portfolio['initial_value_usd']):,.0f}",
-    )
-
-    col2.metric(
-        label="Current Value (USD)",
-        value=f"${Decimal(portfolio['current_value_usd']):,.0f}",
-    )
-
-    col3.metric(
-        label="Net P&L (USD)",
-        value=f"${Decimal(portfolio['net_result']):,.0f}",
-        delta=f"{Decimal(portfolio['roi']):.2%}",
-    )
-
-    col4, col5, col6 = st.columns(3)
-
-    col4.metric(
-        label="Average Price (USD)",
-        value=f"${Decimal(portfolio['average_price_usd']):,.0f}",
-    )
-
-    col5.metric(
-        label="ROI",
-        value=f"{Decimal(portfolio['roi']):.2%}",
-    )
-
-    col6.metric(
-        label="Total BTC Holdings",
-        value=f"{Decimal(portfolio['total_btc_amount']):.8f} BTC",
-    )
-
-
-def get_gradient_color(progress_ratio):
+def create_simple_donut_chart(portfolio):
     """
-    Calculates a color in a red-yellow-green gradient based on a progress ratio (0.0 to 1.0).
+    Creates a simple Plotly donut chart with conditional coloring.
+
+    - Yellow: < 50%
+    - Light Green: 50% - 80%
+    - Dark Green: 80% - 100%
+    - Purple (Vibrant): > 100%
+
+    Args:
+        current_value (float or int): The current progress value.
+        goal_value (float or int): The target goal value.
+
+    Returns:
+        go.Figure: A Plotly figure object for the donut chart.
     """
-    # Clamp the ratio to be between 0 and 1
-    progress_ratio = max(0, min(1, progress_ratio))
 
-    # Define the start (red), middle (yellow), and end (green) colors in RGB
-    start_rgb = (231, 76, 60)  # Red
-    middle_rgb = (241, 196, 15)  # Yellow
-    end_rgb = (46, 204, 113)  # Green
+    current = Decimal(portfolio["current_value_usd"])
+    goal = Decimal(portfolio["goal_in_usd"])
 
-    if progress_ratio < 0.5:
-        # Interpolate between red and yellow
-        ratio = progress_ratio * 2
-        r = int(start_rgb[0] + (middle_rgb[0] - start_rgb[0]) * ratio)
-        g = int(start_rgb[1] + (middle_rgb[1] - start_rgb[1]) * ratio)
-        b = int(start_rgb[2] + (middle_rgb[2] - start_rgb[2]) * ratio)
-    else:
-        # Interpolate between yellow and green
-        ratio = (progress_ratio - 0.5) * 2
-        r = int(middle_rgb[0] + (end_rgb[0] - middle_rgb[0]) * ratio)
-        g = int(middle_rgb[1] + (end_rgb[1] - middle_rgb[1]) * ratio)
-        b = int(middle_rgb[2] + (end_rgb[2] - middle_rgb[2]) * ratio)
-
-    # Convert RGB to a hex string for Plotly
-    return f"#{r:02x}{g:02x}{b:02x}"
-
-
-def create_goal_chart(current_value_usd, goal_in_usd, initial_value_usd):
-    """
-    Creates an enhanced Plotly donut chart with a gradient color
-    and detailed annotations.
-    """
-    # Convert inputs to Decimal for precision
-    current = Decimal(current_value_usd)
-    goal = Decimal(goal_in_usd)
-
-    # --- 1. Calculations ---
+    # 1. Calculate Progress and Handle Division by Zero
     if goal > 0:
         progress_ratio = current / goal
-        progress_percentage = round(progress_ratio * 100)
     else:
-        progress_ratio = 0
-        progress_percentage = 0
+        progress_ratio = Decimal(0)
 
-    # --- 2. Color Logic (NEW: Gradient based on progress) ---
-    progress_color = get_gradient_color(float(progress_ratio))
+    # Use ROUND_HALF_UP for standard rounding
+    progress_percentage = int(
+        (progress_ratio * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    )
 
-    # --- 3. Chart Configuration ---
-    visual_progress = min(current, goal)
-    visual_remaining = max(0, goal - visual_progress)
+    # 2. Determine Color Based on Progress
+    if progress_percentage < 50:
+        progress_color = "#B0EBA1"  # Light Pastel Green
+    elif 50 <= progress_percentage < 80:
+        progress_color = "#82E0AA"  # Medium-light Green
+    elif 80 <= progress_percentage <= 100:
+        progress_color = "#2ECC71"  # Standard Green
+    else:
+        progress_color = "#1E8449"  # Dark, Rich Green for overachievement
+    # 3. Define Chart Values
+    # The visible portion of the donut should not exceed 100%
+    visual_progress = min(progress_ratio, Decimal(1))
+    visual_remaining = Decimal(1) - visual_progress
 
+    # 4. Create the Figure
     fig = go.Figure(
         go.Pie(
             values=[visual_progress, visual_remaining],
             hole=0.7,
-            marker_colors=[progress_color, "#F2F3F4"],
+            marker_colors=[
+                progress_color,
+                "#EAECEE",
+            ],  # Color for progress and for the remaining part
             direction="clockwise",
             sort=False,
             showlegend=False,
-            textinfo="none",
+            textinfo="none",  # We will add custom text in the layout
         )
     )
 
-    # --- 4. Layout and Styling (NEW: Multi-line annotation) ---
+    # 5. Update Layout for Styling and Center Text
     fig.update_layout(
-        title_text="Goal Fulfillment",
-        title_x=0.5,
+        # Add the percentage text in the center
         annotations=[
             dict(
-                # Use HTML for multi-line text with different styles
-                text=(
-                    f"<b style='font-size: 1.4em;'>{progress_percentage}%</b><br>"
-                    f"<span style='font-size: 0.8em; color: #555;'>"
-                    f"${current:,.0f} / ${goal:,.0f}"
-                    f"</span>"
-                ),
+                text=f"<b>{progress_percentage}%</b>",
                 x=0.5,
                 y=0.5,
-                font_size=20,
+                font_size=28,
                 showarrow=False,
+                font=dict(color="#333", family="sans-serif"),
             )
         ],
         height=250,
-        margin=dict(l=10, r=10, t=50, b=10),
+        margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",  # Transparent background
+        plot_bgcolor="rgba(0,0,0,0)",
     )
+
     return fig
 
 
+def show_goal_chart(portfolio: dict):
+    # NEW: Wrap the chart in a container to match the metrics card
+    with st.container(border=True):
+        st.markdown(f"### 🎯 Goal Fulfillment")
+        fig = create_simple_donut_chart(portfolio)
+        st.plotly_chart(fig, use_container_width=True)
+        # st.markdown(
+        # f"## `${Decimal(portfolio['current_value_usd']):,.0f}` / `${Decimal(portfolio['goal_in_usd']):,.0f}`",
+        # width="stretch",
+
+
+def show_portfolio_overview(portfolio: dict):
+    with st.container(border=True):
+        st.markdown("### 📈 Performance Overview")
+
+        # --- First Row: Top-line results (Value and Profit) ---
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric(
+            label="💰 Current Value (USD)",
+            value=f"${Decimal(portfolio['current_value_usd']):,.0f}",
+            help="The total current market value of your holdings.",
+        )
+
+        # The delta automatically shows green for profit and red for loss
+        col2.metric(
+            label="💸 Net P&L (USD)",
+            value=f"${Decimal(portfolio['net_result']):,.0f}",
+            delta=f"{Decimal(portfolio['roi']):.2%}",
+            help="Net Profit & Loss and the corresponding Return on Investment (ROI).",
+        )
+
+        col3.metric(
+            label="🎯 Goal (USD)",
+            value=f"${Decimal(portfolio['goal_in_usd']):,.0f}",
+            help="Your portfolio target value.",
+        )
+
+        st.divider()  # Visual separator for clarity
+
+        # --- Second Row: Investment details ---
+        col4, col5, col6 = st.columns(3)
+
+        col4.metric(
+            label="💵 Initial Investment",
+            value=f"${Decimal(portfolio['initial_value_usd']):,.0f}",
+        )
+
+        col5.metric(
+            label="⚖️ Average Price",
+            value=f"${Decimal(portfolio['average_price_usd']):,.2f}",
+        )
+
+        col6.metric(
+            label="₿ Total BTC Holdings",
+            value=f"{Decimal(portfolio['total_btc_amount']):.8f}",
+        )
+
+
 def show_portfolio_list_metrics(portfolio):
-    col1, col2, col3 = st.columns([3, 3, 2])
-    with col1:
-        st.write(f"**Portfolio ID:** {portfolio['id']}")
-    with col2:
-        st.write(f"**Name:** {portfolio['name']}")
-    with col3:
-        # CHANGE #1: Use st.button instead of st.link_button
-        # A unique key is crucial for buttons inside a loop.
-        if st.button("View Details", key=f"view_{portfolio['id']}"):
-            # Set the query parameter to the portfolio id
-            st.query_params["portfolio_id"] = portfolio["id"]
-            st.rerun()
-    st.divider()
+    with st.container(border=True):
+        col1, col2 = st.columns([4, 1])  # Give more space to info, less to the button
+
+        with col1:
+            # Use markdown for a larger, bolded name
+            st.markdown(f"#### {portfolio['name']}")
+            # Use a caption or simple markdown for the secondary information (the goal)
+            st.caption(f"Investment Goal: {portfolio['goal_in_usd']}")
+
+        with col2:
+            # The button to view details. Using a simple arrow can look cleaner.
+            # We add a bit of vertical space to help align it, though perfect
+            # vertical alignment in Streamlit can be tricky without CSS.
+            st.write("")  # A little vertical space
+            if st.button(
+                "View ➔", key=f"view_{portfolio['id']}", use_container_width=True
+            ):
+                st.query_params["portfolio_id"] = portfolio["id"]
+                st.rerun()
