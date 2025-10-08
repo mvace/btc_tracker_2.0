@@ -19,14 +19,55 @@ from utils.fetch_current_btc_price import get_current_price
 router = APIRouter()
 
 
-@router.get("/", response_model=list[PortfolioRead])
+@router.get("/", response_model=list[PortfolioReadWithMetrics])
 async def list_portfolios(
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Portfolio).where(Portfolio.user_id == current_user.id)
+
+    query = (
+        select(
+            Portfolio.id.label("id"),
+            Portfolio.name.label("name"),
+            Portfolio.goal_in_usd.label("goal_in_usd"),
+            # 1. Coalesce SUM to 0 if no transactions exist (returns NULL)
+            func.coalesce(func.sum(Transaction.initial_value_usd), 0).label(
+                "initial_value_usd"
+            ),
+            func.coalesce(func.sum(Transaction.btc_amount), 0).label(
+                "total_btc_amount"
+            ),
+            # 2. Use a CASE statement to prevent division by zero for average_price
+            case(
+                (
+                    func.sum(Transaction.btc_amount) > 0,
+                    func.sum(Transaction.btc_amount * Transaction.price_at_purchase)
+                    / func.sum(Transaction.btc_amount),
+                ),
+                else_=0,
+            ).label("average_price_usd"),
+        )
+        # 3. Use a LEFT JOIN (isouter=True) to include portfolios with no transactions
+        .join(
+            Transaction,
+            Portfolio.id == Transaction.portfolio_id,
+            isouter=True,
+        )
+        .where(Portfolio.user_id == current_user.id)
+        .group_by(Portfolio.id, Portfolio.name)
+    )
     result = await db.execute(query)
-    return result.scalars().all()
+    portfolios_from_db = result.all()
+    current_price = get_current_price()
+
+    porfolios_with_metrics = [
+        PortfolioReadWithMetrics.model_validate(
+            portfolio, from_attributes=True, context={"current_price": current_price}
+        )
+        for portfolio in portfolios_from_db
+    ]
+
+    return porfolios_with_metrics
 
 
 @router.get("/{portfolio_id}", response_model=PortfolioReadWithMetrics)

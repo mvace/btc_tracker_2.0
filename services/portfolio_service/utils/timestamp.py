@@ -1,5 +1,3 @@
-# app/utils.py
-
 from datetime import datetime, timezone, timedelta
 
 # This is a true constant, so it's fine here.

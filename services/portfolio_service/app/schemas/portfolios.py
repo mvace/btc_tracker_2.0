@@ -1,6 +1,5 @@
 from decimal import Decimal
 from pydantic import BaseModel, Field
-from datetime import datetime
 from pydantic_core.core_schema import ValidationInfo
 from pydantic import BaseModel, model_validator
 from typing import Self
