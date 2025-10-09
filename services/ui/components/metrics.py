@@ -145,23 +145,51 @@ def show_portfolio_overview(portfolio: dict):
         )
 
 
+def format_usd(value_str):
+    """Safely converts a string to a float and formats as USD currency."""
+    try:
+        value = float(value_str)
+        return f"${value:,.2f}"
+    except (ValueError, TypeError):
+        return "$0.00"
+
+
 def show_portfolio_list_metrics(portfolio):
+    """A compact row using a colored badge for the ROI."""
+
+    # --- Data & Formatting ---
+    roi = float(portfolio.get("roi", 0))
+    color = "green" if roi > 0 else "red"
+    icon = "▲" if roi > 0 else "▼"
+    roi_display = f"{icon} {roi:.2%}"
+
     with st.container(border=True):
-        col1, col2 = st.columns([4, 1])  # Give more space to info, less to the button
+        # --- MODIFIED LINE ---
+        # Add a 6th column to act as a flexible spacer
+        cols = st.columns([3, 3, 2, 2.5, 4, 1.5], vertical_alignment="center")
 
-        with col1:
-            # Use markdown for a larger, bolded name
-            st.markdown(f"#### {portfolio['name']}")
-            # Use a caption or simple markdown for the secondary information (the goal)
-            st.caption(f"Investment Goal: {portfolio['goal_in_usd']}")
+        # Column 1: Portfolio Name (Ratio: 3)
+        cols[0].markdown(f"**{portfolio['name']}**")
 
-        with col2:
-            # The button to view details. Using a simple arrow can look cleaner.
-            # We add a bit of vertical space to help align it, though perfect
-            # vertical alignment in Streamlit can be tricky without CSS.
-            st.write("")  # A little vertical space
-            if st.button(
-                "View ➔", key=f"view_{portfolio['id']}", use_container_width=True
-            ):
-                st.query_params["portfolio_id"] = portfolio["id"]
-                st.rerun()
+        # Columns 2 & 3: Stats (Ratios: 3 and 2)
+        cols[1].markdown(f"**Value:** {format_usd(portfolio['current_value_usd'])}")
+        btc_amount = float(portfolio.get("total_btc_amount", 0))
+        cols[2].markdown(f"**BTC:** {btc_amount:.4f} ₿")
+
+        # Column 4: ROI Badge (Ratio: 2.5)
+        cols[3].markdown(
+            f'<div style="background-color:{color}; color:white; padding:4px 10px; border-radius:15px; text-align:center; font-size:14px; font-weight:bold;">'
+            f"{roi_display}"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        # Column 5: This is our empty spacer column (Ratio: 4). It pushes the button to the right.
+        # No code needed here, it just takes up space.
+
+        # Column 6: Button (Ratio: 1.5)
+        if cols[5].button(
+            "View", key=f"view_badge_{portfolio['id']}", use_container_width=True
+        ):
+            st.query_params["portfolio_id"] = portfolio["id"]
+            st.rerun()

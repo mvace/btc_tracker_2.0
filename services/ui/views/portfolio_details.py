@@ -38,6 +38,7 @@ def portfolio_detail_view(portfolio_id: int, token: str):
                 # You might get the created transaction back in `data`
                 transaction_id = data.get("id", "N/A")
                 st.success(f"✅ Transaction created successfully! ID: {transaction_id}")
+                st.rerun()
             elif status in [400, 401, 403]:
                 # Extract the detailed error message from the API response
                 error_message = data.get("detail", "An unknown client error occurred.")
