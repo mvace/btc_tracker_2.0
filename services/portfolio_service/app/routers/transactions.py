@@ -20,16 +20,39 @@ from datetime import datetime, timezone
 router = APIRouter()
 
 
-@router.get("/", response_model=list[TransactionRead])
+@router.get("/", response_model=list[TransactionReadWithMetrics])
 async def list_transactions(
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
     query = (
-        select(Transaction).join(Portfolio).where(Portfolio.user_id == current_user.id)
+        select(
+            Transaction.id,
+            Transaction.portfolio_id,
+            Transaction.btc_amount,
+            Transaction.price_at_purchase,
+            Transaction.btc_amount,
+            Transaction.initial_value_usd,
+            Transaction.timestamp_hour_rounded,
+        )
+        .join(Portfolio)
+        .where(Portfolio.user_id == current_user.id)
     )
     result = await db.execute(query)
-    return result.scalars().all()
+    data = result.all()
+    if not data:
+        raise HTTPException(status_code=404, detail="Transactions not found")
+
+    current_price = get_current_price()
+
+    transactions_with_metrics = [
+        TransactionReadWithMetrics.model_validate(
+            transaction, from_attributes=True, context={"current_price": current_price}
+        )
+        for transaction in data
+    ]
+
+    return transactions_with_metrics
 
 
 @router.post("/", response_model=TransactionRead, status_code=201)
