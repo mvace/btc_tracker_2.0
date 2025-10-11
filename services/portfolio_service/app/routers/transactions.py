@@ -5,9 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Transaction, User, Portfolio
-from app.schemas.transactions import TransactionRead, TransactionCreate, PriceData
+from app.schemas.transactions import (
+    TransactionRead,
+    TransactionCreate,
+    TransactionReadWithMetrics,
+)
 from core.security import get_current_user
 from utils.price_service_client import fetch_btc_price_data_for_timestamp
+from utils.fetch_current_btc_price import get_current_price
 from fastapi import HTTPException
 import requests
 from datetime import datetime, timezone
@@ -73,14 +78,22 @@ async def create_transaction(
     return new_transaction
 
 
-@router.get("/{transaction_id}", response_model=TransactionRead)
+@router.get("/{transaction_id}", response_model=TransactionReadWithMetrics)
 async def get_transaction(
     transaction_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
     query = (
-        select(Transaction)
+        select(
+            Transaction.id,
+            Transaction.portfolio_id,
+            Transaction.btc_amount,
+            Transaction.price_at_purchase,
+            Transaction.btc_amount,
+            Transaction.initial_value_usd,
+            Transaction.timestamp_hour_rounded,
+        )
         .join(Portfolio)
         .where(
             Transaction.id == transaction_id,
@@ -88,10 +101,17 @@ async def get_transaction(
         )
     )
     result = await db.execute(query)
-    transaction = result.scalar_one_or_none()
-    if not transaction:
+    data = result.one_or_none()
+
+    if not data:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    return transaction
+
+    current_price = get_current_price()
+
+    transaction_with_metrics = TransactionReadWithMetrics.model_validate(
+        data, from_attributes=True, context={"current_price": current_price}
+    )
+    return transaction_with_metrics
 
 
 @router.delete("/{transaction_id}", status_code=204)

@@ -4,6 +4,9 @@ from decimal import Decimal
 from typing import Optional, Any
 from pydantic import field_validator
 from utils.timestamp import get_last_valid_timestamp, FIRST_HISTORICAL_TIMESTAMP
+from pydantic_core.core_schema import ValidationInfo
+from pydantic import BaseModel, model_validator
+from typing import Self
 
 
 class TransactionCreate(BaseModel):
@@ -44,24 +47,30 @@ class TransactionRead(BaseModel):
     model_config = {"from_attributes": True, "populate_by_name": True}
 
 
-class PriceData(BaseModel):
-    unix_timestamp: int
-    high: Decimal
-    low: Decimal
-    open: Decimal
-    close: Decimal
-    volumefrom: Decimal
-    volumeto: Decimal
+class TransactionReadWithMetrics(TransactionRead):
+    current_value_usd: Decimal | None = None
+    net_result: Decimal | None = None
+    roi: Decimal | None = None
 
+    @model_validator(mode="after")
+    def calculate_metrics(self, info: ValidationInfo) -> Self:
+        if self.current_value_usd is not None:
+            return self
 
-class TransactionRead(BaseModel):
-    id: int
-    portfolio_id: int
-    btc_amount: Decimal
-    btc_price: Decimal = Field(alias="price_at_purchase")
-    initial_value_usd: Decimal
-    timestamp_hour_rounded: datetime
-    model_config = {"from_attributes": True, "populate_by_name": True}
+        current_price = info.context.get("current_price")
+        if current_price is None:
+            raise ValueError(
+                "`current_price` must be provided in the validation context."
+            )
+        self.current_value_usd = self.btc_amount * current_price
+        if self.initial_value_usd > 0:
+            self.net_result = self.current_value_usd - self.initial_value_usd
+            self.roi = self.net_result / self.initial_value_usd
+        else:
+            # If there was no initial investment, results are zero
+            self.net_result = Decimal("0.0")
+            self.roi = Decimal("0.0")
+        return self
 
 
 class PriceData(BaseModel):
