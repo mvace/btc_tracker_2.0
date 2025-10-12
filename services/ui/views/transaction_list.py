@@ -1,17 +1,24 @@
 import api_client
 import streamlit as st
 import pandas as pd
+from components.metrics import show_transaction_list_metrics
+import auth
 
 
 def transaction_list_view(token):
     status, data = api_client.get_transaction_list(token)
 
     if status == 200:
-        if data:
-            df = pd.DataFrame(data)
-            st.subheader("Your Transactions")
-            st.dataframe(df)
+
+        st.header(f"You have {len(data)} transactions.")
+        if not data:
+            st.info("You have no portfolios yet. Create one using the form below.")
         else:
-            st.info("You have no transactions yet. Use the sidebar to create one.")
+            for portfolio in data:
+                show_transaction_list_metrics(portfolio)
+
+    elif status == 401:
+        auth.logout_user()
+        st.rerun()
     else:
-        st.error(f"An unexpected server error occurred. Status code: {status}")
+        st.error("Failed to retrieve portfolios.")

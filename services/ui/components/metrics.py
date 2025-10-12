@@ -1,6 +1,7 @@
 import streamlit as st
 from decimal import Decimal, ROUND_HALF_UP
 import plotly.graph_objects as go
+from datetime import datetime
 
 
 def create_simple_donut_chart(portfolio):
@@ -145,11 +146,29 @@ def show_portfolio_overview(portfolio: dict):
         )
 
 
+def format_timestamp(timestamp_str: str) -> str:
+    """
+    Parses an ISO format timestamp string and returns it in DD.MM.YYYY HH:MM format.
+    Returns the original string if parsing fails or input is invalid.
+    """
+    if not timestamp_str:
+        return "N/A"
+
+    try:
+        # Assuming timestamp is an ISO format string (e.g., '2023-10-27T14:00:00Z')
+        # The .replace() handles the 'Z' for UTC timezone that fromisoformat can parse
+        dt_object = datetime.fromisoformat(str(timestamp_str).replace("Z", "+00:00"))
+        return dt_object.strftime("%d.%m.%Y %H:%M")
+    except (ValueError, TypeError):
+        # If parsing fails, show the original value as a fallback
+        return str(timestamp_str)
+
+
 def format_usd(value_str):
     """Safely converts a string to a float and formats as USD currency."""
     try:
         value = float(value_str)
-        return f"${value:,.2f}"
+        return f"${value:,.0f}"
     except (ValueError, TypeError):
         return "$0.00"
 
@@ -166,15 +185,17 @@ def show_portfolio_list_metrics(portfolio):
     with st.container(border=True):
         # --- MODIFIED LINE ---
         # Add a 6th column to act as a flexible spacer
-        cols = st.columns([3, 3, 2, 2.5, 4, 1.5], vertical_alignment="center")
+        cols = st.columns([2, 4, 3, 2, 2, 1.5])
 
         # Column 1: Portfolio Name (Ratio: 3)
         cols[0].markdown(f"**{portfolio['name']}**")
 
         # Columns 2 & 3: Stats (Ratios: 3 and 2)
-        cols[1].markdown(f"**Value:** {format_usd(portfolio['current_value_usd'])}")
+        cols[1].markdown(
+            f"**Current Value:** {format_usd(portfolio['current_value_usd'])}"
+        )
         btc_amount = float(portfolio.get("total_btc_amount", 0))
-        cols[2].markdown(f"**BTC:** {btc_amount:.4f} ₿")
+        cols[2].markdown(f"**BTC:** {btc_amount:.8f} ₿")
 
         # Column 4: ROI Badge (Ratio: 2.5)
         cols[3].markdown(
@@ -189,7 +210,86 @@ def show_portfolio_list_metrics(portfolio):
 
         # Column 6: Button (Ratio: 1.5)
         if cols[5].button(
-            "View", key=f"view_badge_{portfolio['id']}", use_container_width=True
+            "View", key=f"view_potfolio_{portfolio['id']}", use_container_width=True
         ):
             st.query_params["portfolio_id"] = portfolio["id"]
             st.rerun()
+
+
+def show_transaction_list_metrics(transaction):
+    """A compact row using a colored badge for the ROI."""
+
+    # --- Data & Formatting ---
+    roi = float(transaction.get("roi", 0))
+    color = "green" if roi > 0 else "red"
+    icon = "▲" if roi > 0 else "▼"
+    roi_display = f"{icon} {roi:.2%}"
+
+    with st.container(border=True):
+        # --- MODIFIED LINE ---
+        # Add a 6th column to act as a flexible spacer
+        cols = st.columns([2, 4, 3, 2, 2, 1.5])
+
+        # Column 1: Portfolio Name (Ratio: 3)
+        cols[0].markdown(f"{format_timestamp(transaction['timestamp_hour_rounded'])}")
+
+        # Columns 2 & 3: Stats (Ratios: 3 and 2)
+        btc_amount = float(transaction.get("btc_amount", 0))
+
+        cols[1].markdown(
+            f"**Current Value:** {format_usd(transaction['current_value_usd'])}"
+        )
+        btc_amount = float(transaction.get("btc_amount", 0))
+        cols[2].markdown(f"**BTC:** {btc_amount:.8f} ₿")
+        # Column 4: ROI Badge (Ratio: 2.5)
+        cols[3].markdown(
+            f'<div style="background-color:{color}; color:white; padding:4px 10px; border-radius:15px; text-align:center; font-size:14px; font-weight:bold;">'
+            f"{roi_display}"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        # Column 5: This is our empty spacer column (Ratio: 4). It pushes the button to the right.
+        # No code needed here, it just takes up space.
+
+        # Column 6: Button (Ratio: 1.5)
+        if cols[5].button(
+            "View",
+            key=f"view_transaction_{transaction['id']}",
+            use_container_width=True,
+        ):
+            transaction_details_dialog(transaction)
+
+
+@st.dialog("Transaction Details")
+def transaction_details_dialog(transaction):
+    """A simple, clean layout with color-coded performance metrics."""
+    st.subheader(f"Details for Transaction: {transaction['id']}")
+    st.caption(f"Date: {format_timestamp(transaction.get('timestamp_hour_rounded'))}")
+    st.divider()
+
+    # --- Prepare Data ---
+    net_result = float(transaction.get("net_result", 0))
+    roi = float(transaction.get("roi", 0))
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("<h6>Purchase</h6>", unsafe_allow_html=True)
+        st.metric("Invested", format_usd(transaction.get("initial_value_usd", 0)))
+        st.metric(
+            "BTC Price at purchase", format_usd(transaction.get("price_at_purchase", 0))
+        )
+        st.metric("BTC Amount", f"{float(transaction.get('btc_amount', 0)):.8f} ₿")
+
+    with col2:
+        st.markdown("<h6>Performance</h6>", unsafe_allow_html=True)
+        st.metric("Current Value", format_usd(transaction.get("current_value_usd", 0)))
+
+        # Use st.metric's 'delta' to handle coloring automatically
+        st.metric("Net Result", format_usd(net_result), delta=f"{roi:.2%}")
+
+    if st.button(
+        "Close", key=f"close_dialog_{transaction['id']}", use_container_width=True
+    ):
+        st.rerun()
