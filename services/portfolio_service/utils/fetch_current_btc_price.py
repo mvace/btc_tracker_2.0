@@ -1,8 +1,8 @@
 from decimal import Decimal
 import requests
-from core.settings import Settings
+from core.settings import settings
 
-API_KEY = Settings.CRYPTOCOMPARE_API_KEY
+API_KEY = settings.CRYPTOCOMPARE_API_KEY
 
 
 def get_current_price():
