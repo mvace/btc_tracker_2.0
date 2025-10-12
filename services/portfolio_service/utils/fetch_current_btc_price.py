@@ -1,5 +1,8 @@
 from decimal import Decimal
 import requests
+from core.settings import Settings
+
+API_KEY = Settings.CRYPTOCOMPARE_API_KEY
 
 
 def get_current_price():
@@ -17,6 +20,7 @@ def get_current_price():
     params = {
         "fsym": "BTC",  # From symbol (Bitcoin)
         "tsyms": "USD",  # To symbol (US Dollar)
+        "api_key": API_KEY,
     }
     try:
         response = requests.get(endpoint, params=params)

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     # --- External services ---
     PRICE_SERVICE_BASE_URL: str = Field()
+    CRYPTOCOMPARE_API_KEY: str = Field()
     # --- Security / Auth ---
     SECRET_KEY: str = Field(..., description="JWT signing secret")
     ALGORITHM: str = Field(default="HS256")
