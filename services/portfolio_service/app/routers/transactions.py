@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends
-from typing import Annotated
+from fastapi import APIRouter, Depends, Query
+from typing import Annotated, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +24,9 @@ router = APIRouter()
 async def list_transactions(
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
+    portfolio_id: Optional[int] = Query(
+        default=None, description="Filter transactions by portfolio ID"
+    ),
 ):
     query = (
         select(
@@ -38,10 +41,17 @@ async def list_transactions(
         .join(Portfolio)
         .where(Portfolio.user_id == current_user.id)
     )
+    if portfolio_id is not None:
+        query = query.where(Transaction.portfolio_id == portfolio_id)
+
     result = await db.execute(query)
     data = result.all()
-    if not data:
-        raise HTTPException(status_code=404, detail="Transactions not found")
+    if not data and portfolio_id:
+        return []
+    elif not data:
+        raise HTTPException(
+            status_code=404, detail="No transactions found for this user."
+        )
 
     current_price = get_current_price()
 
