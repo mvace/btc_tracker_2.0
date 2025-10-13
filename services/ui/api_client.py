@@ -1,6 +1,7 @@
 import requests
 import streamlit as st
 import auth
+from typing import Optional
 
 API_URL = st.secrets["API_URL"]
 
@@ -72,12 +73,15 @@ def delete_portfolio(token: str, portfolio_id):
     pass
 
 
-def get_transaction_list(token: str):
-
+def get_transaction_list(token: str, portfolio_id: Optional[int] = None):
+    params = {}
+    if portfolio_id is not None:
+        params["portfolio_id"] = portfolio_id
     try:
         response = requests.get(
             f"{API_URL}/transaction/",
             headers={"Authorization": f"Bearer {token}"},
+            params=params,
         )
 
         try:

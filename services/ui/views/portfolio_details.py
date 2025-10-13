@@ -6,6 +6,7 @@ from components.metrics import (
     create_simple_donut_chart,
 )
 from components.forms import create_transaction_form
+from views.transaction_list import transaction_list_view
 import api_client
 import auth
 
@@ -48,7 +49,7 @@ def portfolio_detail_view(portfolio_id: int, token: str):
             else:
                 # A catch-all for other server-side errors
                 st.error(f"An unexpected server error occurred. Status code: {status}")
-
+        transaction_list_view(token, portfolio_id)
     elif status == 401:
         auth.logout_user()
         st.rerun()
