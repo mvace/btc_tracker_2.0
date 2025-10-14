@@ -3,6 +3,8 @@ from decimal import Decimal, ROUND_HALF_UP
 import plotly.graph_objects as go
 from datetime import datetime
 import api_client
+from utils import format_usd, format_timestamp
+from views.transaction_detail import transaction_details_dialog
 
 
 def create_simple_donut_chart(portfolio):
@@ -147,33 +149,6 @@ def show_portfolio_overview(portfolio: dict):
         )
 
 
-def format_timestamp(timestamp_str: str) -> str:
-    """
-    Parses an ISO format timestamp string and returns it in DD.MM.YYYY HH:MM format.
-    Returns the original string if parsing fails or input is invalid.
-    """
-    if not timestamp_str:
-        return "N/A"
-
-    try:
-        # Assuming timestamp is an ISO format string (e.g., '2023-10-27T14:00:00Z')
-        # The .replace() handles the 'Z' for UTC timezone that fromisoformat can parse
-        dt_object = datetime.fromisoformat(str(timestamp_str).replace("Z", "+00:00"))
-        return dt_object.strftime("%d.%m.%Y %H:%M")
-    except (ValueError, TypeError):
-        # If parsing fails, show the original value as a fallback
-        return str(timestamp_str)
-
-
-def format_usd(value_str):
-    """Safely converts a string to a float and formats as USD currency."""
-    try:
-        value = float(value_str)
-        return f"${value:,.0f}"
-    except (ValueError, TypeError):
-        return "$0.00"
-
-
 def show_portfolio_list_metrics(portfolio):
     """A compact row using a colored badge for the ROI."""
 
@@ -260,59 +235,3 @@ def show_transaction_list_metrics(token, transaction):
             use_container_width=True,
         ):
             transaction_details_dialog(token, transaction)
-
-
-@st.dialog("Transaction Details")
-def transaction_details_dialog(token, transaction):
-    """A simple, clean layout with color-coded performance metrics."""
-    st.subheader(f"Details for Transaction: {transaction['id']}")
-    st.caption(f"Date: {format_timestamp(transaction.get('timestamp_hour_rounded'))}")
-    st.divider()
-
-    # --- Prepare Data ---
-    net_result = float(transaction.get("net_result", 0))
-    roi = float(transaction.get("roi", 0))
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("<h6>Purchase</h6>", unsafe_allow_html=True)
-        st.metric("Invested", format_usd(transaction.get("initial_value_usd", 0)))
-        st.metric(
-            "BTC Price at purchase", format_usd(transaction.get("price_at_purchase", 0))
-        )
-        st.metric("BTC Amount", f"{float(transaction.get('btc_amount', 0)):.8f} ₿")
-
-    with col2:
-        st.markdown("<h6>Performance</h6>", unsafe_allow_html=True)
-        st.metric("Current Value", format_usd(transaction.get("current_value_usd", 0)))
-
-        # Use st.metric's 'delta' to handle coloring automatically
-        st.metric("Net Result", format_usd(net_result), delta=f"{roi:.2%}")
-
-    b_col1, b_col2 = st.columns(2)
-
-    with b_col1:
-        # Tlačítko pro smazání
-        if st.button(
-            "Delete Transaction",
-            key=f"delete_{transaction['id']}",
-            use_container_width=True,
-            type="primary",
-        ):
-            status_code, data = api_client.delete_transaction(token, transaction["id"])
-
-            if status_code == 204:
-                st.toast(
-                    f"Transaction {transaction['id']} deleted successfully.", icon="✅"
-                )
-                st.rerun()
-            else:
-                error_message = data.get("detail", "An unknown error occurred.")
-                st.error(f"Error: {error_message}")
-
-    with b_col2:
-        if st.button(
-            "Close", key=f"close_dialog_{transaction['id']}", use_container_width=True
-        ):
-            st.rerun()
