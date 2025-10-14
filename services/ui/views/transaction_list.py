@@ -17,7 +17,7 @@ def transaction_list_view(token: str, portfolio_id: Optional[int] = None):
             st.info("You have no portfolios yet. Create one using the form below.")
         else:
             for transaction in data:
-                show_transaction_list_metrics(transaction)
+                show_transaction_list_metrics(token, transaction)
 
     elif status == 401:
         auth.logout_user()

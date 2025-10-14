@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from components.metrics import (
     show_goal_chart,
     show_portfolio_overview,
-    create_simple_donut_chart,
 )
 from components.forms import create_transaction_form
 from views.transaction_list import transaction_list_view

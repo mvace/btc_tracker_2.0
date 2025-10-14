@@ -122,7 +122,23 @@ def update_transaction(token: str, transaction_id):
 
 
 def delete_transaction(token: str, transaction_id):
-    pass
+    try:
+        response = requests.delete(
+            f"{API_URL}/transaction/{transaction_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        if response.status_code == 204:
+            return 204, {}
+        else:
+            try:
+                data = response.json()
+            except requests.exceptions.JSONDecodeError:
+                data = {"detail": response.text}
+            return response.status_code, data
+
+    except requests.exceptions.ConnectionError:
+        return 503, {"detail": "Connection to the API failed."}
 
 
 def post_login(username: str, password: str):

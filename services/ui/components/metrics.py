@@ -2,6 +2,7 @@ import streamlit as st
 from decimal import Decimal, ROUND_HALF_UP
 import plotly.graph_objects as go
 from datetime import datetime
+import api_client
 
 
 def create_simple_donut_chart(portfolio):
@@ -216,7 +217,7 @@ def show_portfolio_list_metrics(portfolio):
             st.rerun()
 
 
-def show_transaction_list_metrics(transaction):
+def show_transaction_list_metrics(token, transaction):
     """A compact row using a colored badge for the ROI."""
 
     # --- Data & Formatting ---
@@ -258,11 +259,11 @@ def show_transaction_list_metrics(transaction):
             key=f"view_transaction_{transaction['id']}",
             use_container_width=True,
         ):
-            transaction_details_dialog(transaction)
+            transaction_details_dialog(token, transaction)
 
 
 @st.dialog("Transaction Details")
-def transaction_details_dialog(transaction):
+def transaction_details_dialog(token, transaction):
     """A simple, clean layout with color-coded performance metrics."""
     st.subheader(f"Details for Transaction: {transaction['id']}")
     st.caption(f"Date: {format_timestamp(transaction.get('timestamp_hour_rounded'))}")
@@ -289,7 +290,29 @@ def transaction_details_dialog(transaction):
         # Use st.metric's 'delta' to handle coloring automatically
         st.metric("Net Result", format_usd(net_result), delta=f"{roi:.2%}")
 
-    if st.button(
-        "Close", key=f"close_dialog_{transaction['id']}", use_container_width=True
-    ):
-        st.rerun()
+    b_col1, b_col2 = st.columns(2)
+
+    with b_col1:
+        # Tlačítko pro smazání
+        if st.button(
+            "Delete Transaction",
+            key=f"delete_{transaction['id']}",
+            use_container_width=True,
+            type="primary",
+        ):
+            status_code, data = api_client.delete_transaction(token, transaction["id"])
+
+            if status_code == 204:
+                st.toast(
+                    f"Transaction {transaction['id']} deleted successfully.", icon="✅"
+                )
+                st.rerun()
+            else:
+                error_message = data.get("detail", "An unknown error occurred.")
+                st.error(f"Error: {error_message}")
+
+    with b_col2:
+        if st.button(
+            "Close", key=f"close_dialog_{transaction['id']}", use_container_width=True
+        ):
+            st.rerun()
