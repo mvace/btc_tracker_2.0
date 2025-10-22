@@ -8,6 +8,7 @@ from views.portfolio_create import portfolio_create_view
 from views.login_view import login_view
 from views.register_view import register_view
 from components.forms import create_portfolio_form
+from streamlit_cookies_manager import EncryptedCookieManager
 
 import api_client
 
@@ -18,7 +19,16 @@ import auth
 st.set_page_config(
     page_title="Bitcoin Portfolio Tracker", page_icon="💰", layout="wide"
 )
-API_URL = "https://bitfolio.up.railway.app"
+API_URL = st.secrets["API_URL"]
+
+# --- COOKIE SETUP ---
+cookies = EncryptedCookieManager(password="my_secret_encryption_password")
+
+if not cookies.ready():
+    st.stop()
+
+# Pass cookies to auth functions
+auth.set_cookie_manager(cookies)
 # --- AUTHENTICATION & STATE ---
 
 # Initialize session state variables if they don't exist

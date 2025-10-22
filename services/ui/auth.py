@@ -2,13 +2,15 @@ import requests
 import streamlit as st
 from streamlit_cookies_manager import EncryptedCookieManager
 
-cookies = EncryptedCookieManager(
-    password="my_secret_encryption_password",
-)
-if not cookies.ready():
-    st.stop()
 
 API_URL = st.secrets["API_URL"]
+
+cookies = None  # will be set from main app
+
+
+def set_cookie_manager(cookie_manager):
+    global cookies
+    cookies = cookie_manager
 
 
 def get_token():
