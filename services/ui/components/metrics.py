@@ -3,7 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 import plotly.graph_objects as go
 from datetime import datetime
 import api_client
-from utils import format_usd, format_timestamp
+from components.utils import format_usd, format_timestamp
 from views.transaction_detail import transaction_details_dialog
 
 

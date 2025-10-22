@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    # Build the image from the Dockerfile in the current directory
+    build: .
+    # Map port 8000 on your local machine to port 8000 in the container
+    ports:
+      - "8002:8000"
+    # Mount the current directory into the container at /ui
+    # This allows you to change your code and see updates
+    # without rebuilding the image.
+    volumes:
+      - .:/ui
