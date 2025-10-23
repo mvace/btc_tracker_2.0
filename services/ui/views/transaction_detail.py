@@ -5,8 +5,6 @@ from components.utils import format_timestamp, format_usd
 
 @st.dialog("Transaction Details")
 def transaction_details_dialog(token, transaction):
-    """A simple, clean layout with color-coded performance metrics."""
-    st.subheader(f"Details for Transaction: {transaction['id']}")
     st.caption(f"Date: {format_timestamp(transaction.get('timestamp_hour_rounded'))}")
     st.divider()
 

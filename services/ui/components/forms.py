@@ -1,17 +1,19 @@
 import streamlit as st
 from decimal import Decimal
 import plotly.graph_objects as go
-from datetime import datetime, timezone
-import requests
+from datetime import datetime, timezone, date, timedelta
 from components.timestamp import merged_timestamp
 
 
 def create_transaction_form(portfolio_id):
+    today = date.today()
+    yesterday_date = today - timedelta(days=1)
     with st.form("create_transaction_form"):
         tranaction_amount = st.text_input(
             label="BTC Amount", placeholder="e.g., 0.12345678"
         )
         transaction_date = st.date_input(
+            value=yesterday_date,
             label="Date",
             min_value=datetime(2010, 7, 17, tzinfo=timezone.utc),
             max_value="today",
@@ -61,7 +63,6 @@ def login_form():
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Login")
-        # Always return the status and the data
         return submitted, username, password
 
 
@@ -77,12 +78,9 @@ def register_form():
         )
         confirm_password = st.text_input("Confirm Password", type="password")
 
-        # The submit button for the form
         submitted = st.form_submit_button("Register")
 
-        # --- Form Submission Logic ---
         if submitted:
-            # 1. Client-side validation for a better user experience
             if not email or not password or not confirm_password:
                 st.error("⚠️ Please fill out all fields.")
             elif password != confirm_password:
@@ -90,7 +88,6 @@ def register_form():
             elif len(password) < 8:
                 st.error("⚠️ Password must be at least 8 characters long.")
             else:
-                # 2. Prepare the data payload for the API
                 user_data = {"email": email, "password": password}
                 return submitted, user_data
     return False, None

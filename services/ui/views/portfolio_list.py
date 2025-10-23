@@ -11,7 +11,7 @@ def portfolio_list_view(token: str):
 
     if status == 200:
 
-        st.header(f"You have {len(data)} portfolios.")
+        st.subheader(f"You have {len(data)} portfolios.")
         if not data:
             st.info("You have no portfolios yet. Create one using the form below.")
         else:

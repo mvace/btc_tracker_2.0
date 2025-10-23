@@ -5,20 +5,15 @@ from datetime import datetime
 import api_client
 from components.utils import format_usd, format_timestamp
 from views.transaction_detail import transaction_details_dialog
+import requests
 
 
 def create_simple_donut_chart(portfolio):
     """
-    Creates a simple Plotly donut chart with conditional coloring.
-
-    - Yellow: < 50%
-    - Light Green: 50% - 80%
-    - Dark Green: 80% - 100%
-    - Purple (Vibrant): > 100%
+    Creates a Plotly donut chart with conditional coloring, optimized for a dark theme.
 
     Args:
-        current_value (float or int): The current progress value.
-        goal_value (float or int): The target goal value.
+        portfolio (dict): A dictionary containing 'current_value_usd' and 'goal_in_usd'.
 
     Returns:
         go.Figure: A Plotly figure object for the donut chart.
@@ -38,15 +33,20 @@ def create_simple_donut_chart(portfolio):
         (progress_ratio * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     )
 
-    # 2. Determine Color Based on Progress
+    # 2. Determine Color Based on Progress - OPTIMIZED FOR DARK THEME
+    # Using shades of your primaryColor (#615fff) and related blues/greens
     if progress_percentage < 50:
-        progress_color = "#B0EBA1"  # Light Pastel Green
+        progress_color = "#3A86FF"  # A lighter, vibrant blue
     elif 50 <= progress_percentage < 80:
-        progress_color = "#82E0AA"  # Medium-light Green
+        progress_color = "#4D96FF"  # A more intense blue
     elif 80 <= progress_percentage <= 100:
-        progress_color = "#2ECC71"  # Standard Green
-    else:
-        progress_color = "#1E8449"  # Dark, Rich Green for overachievement
+        progress_color = "#615fff"  # Your primary color!
+    else:  # > 100%
+        progress_color = "#28A745"  # A distinct, strong green for overachievement
+
+    # Color for the remaining (empty) part of the donut
+    remaining_color = "#314158"  # From your borderColor or secondaryBackgroundColor
+
     # 3. Define Chart Values
     # The visible portion of the donut should not exceed 100%
     visual_progress = min(progress_ratio, Decimal(1))
@@ -59,8 +59,8 @@ def create_simple_donut_chart(portfolio):
             hole=0.7,
             marker_colors=[
                 progress_color,
-                "#EAECEE",
-            ],  # Color for progress and for the remaining part
+                remaining_color,
+            ],
             direction="clockwise",
             sort=False,
             showlegend=False,
@@ -78,7 +78,10 @@ def create_simple_donut_chart(portfolio):
                 y=0.5,
                 font_size=28,
                 showarrow=False,
-                font=dict(color="#333", family="sans-serif"),
+                # --- OPTIMIZED FOR DARK THEME ---
+                font=dict(
+                    color="#e2e8f0", family="Space Grotesk"
+                ),  # Use your textColor and font
             )
         ],
         height=250,
@@ -235,3 +238,25 @@ def show_transaction_list_metrics(token, transaction):
             use_container_width=True,
         ):
             transaction_details_dialog(token, transaction)
+
+
+@st.cache_data(ttl=1800)
+def get_bitcoin_price():
+    """Fetches the current Bitcoin price and 24h change from CoinGecko."""
+    try:
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {
+            "ids": "bitcoin",
+            "vs_currencies": "usd",
+            "include_24hr_change": "true",
+        }
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()["bitcoin"]
+        return data["usd"], data["usd_24h_change"]
+    except requests.RequestException as e:
+        st.error(f"Error fetching BTC price: {e}")
+        return None, None
+    except (KeyError, TypeError):
+        st.error("Error parsing price data.")
+        return None, None

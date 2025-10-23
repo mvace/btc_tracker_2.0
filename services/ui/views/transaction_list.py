@@ -12,7 +12,7 @@ def transaction_list_view(token: str, portfolio_id: Optional[int] = None):
 
     if status == 200:
 
-        st.header(f"You have {len(data)} transactions.")
+        st.subheader(f"You have {len(data)} transactions")
         if not data:
             st.info("You have no portfolios yet. Create one using the form below.")
         else:
