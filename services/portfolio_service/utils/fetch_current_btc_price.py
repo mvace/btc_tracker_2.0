@@ -26,6 +26,7 @@ def get_current_price():
         response = requests.get(endpoint, params=params)
         response.raise_for_status()  # Raises an HTTPError for bad responses (4xx and 5xx)
         data = response.json()
+        print(data)
 
         if "USD" in data:
             current_price = Decimal(data["USD"]).quantize(
