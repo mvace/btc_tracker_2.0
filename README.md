@@ -22,25 +22,12 @@ Here is a detailed breakdown of each microservice.
 
 ### 1. Price Service
 
-This service acts as the single source of truth for historical Bitcoin price data. It is a standalone application that fetches data from an external API and provides it to other internal services.
-
-* **Technology:** FastAPI, PostgreSQL, SQLAlchemy, Pydantic
-* **Functionality:**
-    * A recurring script uses the **CryptoCompare API** to fetch hourly Bitcoin price data.
-    * This data is saved into its own dedicated PostgreSQL database.
-    * It exposes a simple internal API for other services (like the Portfolio Service) to query prices based on a timestamp.
-
-#### API Endpoints
-
-```http
-GET /prices/
-# Description: Get all historical prices stored in the database.
-
-GET /prices/{unix_timestamp}
-# Description: Get the Bitcoin price for a specific hour, identified by a Unix timestamp.
-
+The Price Service is a specialized microservice built with FastAPI, PostgreSQL, SQLAlchemy, and Pydantic, acting as the single source of truth for historical Bitcoin price data. Its primary function is to fetch hourly price data from the external CryptoCompare API using a script and store this information in its own dedicated PostgreSQL database. It then exposes a simple internal API, allowing other services, such as the Portfolio Service, to query and retrieve prices based on a specific Unix timestamp.
 
 ### 2. Portfolio Service
 
+The Portfolio Service is the central backbone of the application, developed using FastAPI, PostgreSQL, SQLAlchemy, and Pydantic. It manages all core business logic, including user registration and authentication via JWT tokens, as well as all CRUD operations for user portfolios and transactions. When a new transaction is created, this service communicates with the Price Service to fetch the correct historical price, calculates key performance metrics for both the transaction (like ROI and net result) and the parent portfolio (like average price and total value), and persists this data.
 
 ### 3. UI
+
+The UI is a simple, user-facing web interface built with Streamlit. It serves as the single entry point for end-users, handling interactions like registration, login, portfolio creation, and adding new transactions. It communicates exclusively with the Portfolio Service's API to send user data and retrieve information. Its main purpose is to present a clean dashboard where users can view their portfolios and transactions along with all the calculated performance metrics, such as ROI and current value.
