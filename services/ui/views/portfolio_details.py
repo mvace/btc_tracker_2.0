@@ -62,9 +62,5 @@ def portfolio_detail_view(portfolio_id: int, token: str):
             st.header("Transaction History")
             transaction_list_view(token, portfolio_id)
 
-    elif status == 401:
-        auth.logout_user()
-        st.rerun()
-
     else:
         st.error("Portfolio not found.")

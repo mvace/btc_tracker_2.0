@@ -14,13 +14,11 @@ def transaction_list_view(token: str, portfolio_id: Optional[int] = None):
 
         st.subheader(f"You have {len(data)} transactions")
         if not data:
-            st.info("You have no portfolios yet. Create one using the form below.")
+            st.info("You have no portfolios yet. Create one using the form above.")
         else:
             for transaction in data:
                 show_transaction_list_metrics(token, transaction)
-
-    elif status == 401:
-        auth.logout_user()
-        st.rerun()
+    elif status == 404:
+        st.info("You have no transactions yet.")
     else:
         st.error("Failed to retrieve transactions.")
