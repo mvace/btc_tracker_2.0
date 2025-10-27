@@ -1,6 +1,7 @@
 import streamlit as st
 import api_client
-from components.utils import format_timestamp, format_usd
+from components.utils import format_usd
+from components.timestamp import format_timestamp
 
 
 @st.dialog("Transaction Details")
@@ -8,7 +9,6 @@ def transaction_details_dialog(token, transaction):
     st.caption(f"Date: {format_timestamp(transaction.get('timestamp_hour_rounded'))}")
     st.divider()
 
-    # --- Prepare Data ---
     net_result = float(transaction.get("net_result", 0))
     roi = float(transaction.get("roi", 0))
 
@@ -25,14 +25,11 @@ def transaction_details_dialog(token, transaction):
     with col2:
         st.markdown("<h6>Performance</h6>", unsafe_allow_html=True)
         st.metric("Current Value", format_usd(transaction.get("current_value_usd", 0)))
-
-        # Use st.metric's 'delta' to handle coloring automatically
         st.metric("Net Result", format_usd(net_result), delta=f"{roi:.2%}")
 
     b_col1, b_col2 = st.columns(2)
 
     with b_col1:
-        # Tlačítko pro smazání
         if st.button(
             "Delete Transaction",
             key=f"delete_{transaction['id']}",

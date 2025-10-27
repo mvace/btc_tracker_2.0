@@ -20,12 +20,10 @@ def portfolio_detail_view(portfolio_id: int, token: str):
     if status == 200:
         st.header(f"Portfolio: {data['name'].replace('_', ' ').title()}")
 
-        # --- Create tabs ---
         overview_tab, transactions_tab = st.tabs(
             ["📊 Portfolio Overview", "📈 Transactions"]
         )
 
-        # --- Overview Tab ---
         with overview_tab:
             metrics_col, chart_col = st.columns([3, 2])
             with metrics_col:
@@ -34,7 +32,6 @@ def portfolio_detail_view(portfolio_id: int, token: str):
             with chart_col:
                 show_goal_chart(portfolio=data)
 
-        # --- Transactions Tab ---
         with transactions_tab:
 
             with st.popover("**➕ Add New Transaction**"):
@@ -62,7 +59,6 @@ def portfolio_detail_view(portfolio_id: int, token: str):
                             f"An unexpected server error occurred. Status code: {create_status}"
                         )
 
-            # --- Add a subheader for the list ---
             st.header("Transaction History")
             transaction_list_view(token, portfolio_id)
 

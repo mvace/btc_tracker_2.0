@@ -30,14 +30,12 @@ async def list_portfolios(
             Portfolio.id.label("id"),
             Portfolio.name.label("name"),
             Portfolio.goal_in_usd.label("goal_in_usd"),
-            # 1. Coalesce SUM to 0 if no transactions exist (returns NULL)
             func.coalesce(func.sum(Transaction.initial_value_usd), 0).label(
                 "initial_value_usd"
             ),
             func.coalesce(func.sum(Transaction.btc_amount), 0).label(
                 "total_btc_amount"
             ),
-            # 2. Use a CASE statement to prevent division by zero for average_price
             case(
                 (
                     func.sum(Transaction.btc_amount) > 0,
@@ -47,7 +45,6 @@ async def list_portfolios(
                 else_=0,
             ).label("average_price_usd"),
         )
-        # 3. Use a LEFT JOIN (isouter=True) to include portfolios with no transactions
         .join(
             Transaction,
             Portfolio.id == Transaction.portfolio_id,
@@ -76,20 +73,17 @@ async def get_portfolio(
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
-    # The efficient query remains the same
     query = (
         select(
             Portfolio.id.label("id"),
             Portfolio.name.label("name"),
             Portfolio.goal_in_usd.label("goal_in_usd"),
-            # 1. Coalesce SUM to 0 if no transactions exist (returns NULL)
             func.coalesce(func.sum(Transaction.initial_value_usd), 0).label(
                 "initial_value_usd"
             ),
             func.coalesce(func.sum(Transaction.btc_amount), 0).label(
                 "total_btc_amount"
             ),
-            # 2. Use a CASE statement to prevent division by zero for average_price
             case(
                 (
                     func.sum(Transaction.btc_amount) > 0,
@@ -99,7 +93,6 @@ async def get_portfolio(
                 else_=0,
             ).label("average_price_usd"),
         )
-        # 3. Use a LEFT JOIN (isouter=True) to include portfolios with no transactions
         .join(
             Transaction,
             Portfolio.id == Transaction.portfolio_id,
@@ -112,16 +105,11 @@ async def get_portfolio(
     result = await db.execute(query)
     data = result.one_or_none()
 
-    # Fail fast: check for data immediately after the query
     if not data:
         raise HTTPException(status_code=404, detail="Portfolio not found")
 
-    # Get external data (e.g., from a live price feed API)
     current_price = get_current_price()
 
-    # The model now handles all calculations.
-    # We unpack the database row and pass the current_price.
-    # data._asdict() converts the SQLAlchemy Row object to a dictionary.
     return PortfolioReadWithMetrics.model_validate(
         data, from_attributes=True, context={"current_price": current_price}
     )
@@ -144,7 +132,6 @@ async def create_portfolio(
         await db.commit()
         await db.refresh(new_portfolio)
     except IntegrityError:
-        # This block will run if the UniqueConstraint is violated
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

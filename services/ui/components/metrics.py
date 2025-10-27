@@ -3,7 +3,8 @@ from decimal import Decimal, ROUND_HALF_UP
 import plotly.graph_objects as go
 from datetime import datetime
 import api_client
-from components.utils import format_usd, format_timestamp
+from components.utils import format_usd
+from components.timestamp import format_timestamp
 from views.transaction_detail import transaction_details_dialog
 import requests
 
@@ -22,37 +23,29 @@ def create_simple_donut_chart(portfolio):
     current = Decimal(portfolio["current_value_usd"])
     goal = Decimal(portfolio["goal_in_usd"])
 
-    # 1. Calculate Progress and Handle Division by Zero
     if goal > 0:
         progress_ratio = current / goal
     else:
         progress_ratio = Decimal(0)
 
-    # Use ROUND_HALF_UP for standard rounding
     progress_percentage = int(
         (progress_ratio * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     )
 
-    # 2. Determine Color Based on Progress - OPTIMIZED FOR DARK THEME
-    # Using shades of your primaryColor (#615fff) and related blues/greens
     if progress_percentage < 50:
-        progress_color = "#3A86FF"  # A lighter, vibrant blue
+        progress_color = "#3A86FF"
     elif 50 <= progress_percentage < 80:
-        progress_color = "#4D96FF"  # A more intense blue
+        progress_color = "#4D96FF"
     elif 80 <= progress_percentage <= 100:
-        progress_color = "#615fff"  # Your primary color!
-    else:  # > 100%
-        progress_color = "#28A745"  # A distinct, strong green for overachievement
+        progress_color = "#615fff"
+    else:
+        progress_color = "#28A745"
 
-    # Color for the remaining (empty) part of the donut
-    remaining_color = "#314158"  # From your borderColor or secondaryBackgroundColor
+    remaining_color = "#314158"
 
-    # 3. Define Chart Values
-    # The visible portion of the donut should not exceed 100%
     visual_progress = min(progress_ratio, Decimal(1))
     visual_remaining = Decimal(1) - visual_progress
 
-    # 4. Create the Figure
     fig = go.Figure(
         go.Pie(
             values=[visual_progress, visual_remaining],
@@ -64,13 +57,11 @@ def create_simple_donut_chart(portfolio):
             direction="clockwise",
             sort=False,
             showlegend=False,
-            textinfo="none",  # We will add custom text in the layout
+            textinfo="none",
         )
     )
 
-    # 5. Update Layout for Styling and Center Text
     fig.update_layout(
-        # Add the percentage text in the center
         annotations=[
             dict(
                 text=f"<b>{progress_percentage}%</b>",
@@ -78,15 +69,12 @@ def create_simple_donut_chart(portfolio):
                 y=0.5,
                 font_size=28,
                 showarrow=False,
-                # --- OPTIMIZED FOR DARK THEME ---
-                font=dict(
-                    color="#e2e8f0", family="Space Grotesk"
-                ),  # Use your textColor and font
+                font=dict(color="#e2e8f0", family="Space Grotesk"),
             )
         ],
         height=250,
         margin=dict(l=10, r=10, t=10, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",  # Transparent background
+        paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
     )
 
@@ -94,21 +82,16 @@ def create_simple_donut_chart(portfolio):
 
 
 def show_goal_chart(portfolio: dict):
-    # NEW: Wrap the chart in a container to match the metrics card
     with st.container(border=True):
         st.markdown(f"### 🎯 Goal Fulfillment")
         fig = create_simple_donut_chart(portfolio)
         st.plotly_chart(fig, use_container_width=True)
-        # st.markdown(
-        # f"## `${Decimal(portfolio['current_value_usd']):,.0f}` / `${Decimal(portfolio['goal_in_usd']):,.0f}`",
-        # width="stretch",
 
 
 def show_portfolio_overview(portfolio: dict):
     with st.container(border=True):
         st.markdown("### 📈 Performance Overview")
 
-        # --- First Row: Top-line results (Value and Profit) ---
         col1, col2, col3 = st.columns(3)
 
         col1.metric(
@@ -117,7 +100,6 @@ def show_portfolio_overview(portfolio: dict):
             help="The total current market value of your holdings.",
         )
 
-        # The delta automatically shows green for profit and red for loss
         col2.metric(
             label="💸 Net P&L (USD)",
             value=f"${Decimal(portfolio['net_result']):,.0f}",
@@ -131,9 +113,8 @@ def show_portfolio_overview(portfolio: dict):
             help="Your portfolio target value.",
         )
 
-        st.divider()  # Visual separator for clarity
+        st.divider()
 
-        # --- Second Row: Investment details ---
         col4, col5, col6 = st.columns(3)
 
         col4.metric(
@@ -155,28 +136,22 @@ def show_portfolio_overview(portfolio: dict):
 def show_portfolio_list_metrics(portfolio):
     """A compact row using a colored badge for the ROI."""
 
-    # --- Data & Formatting ---
     roi = float(portfolio.get("roi", 0))
     color = "green" if roi > 0 else "red"
     icon = "▲" if roi > 0 else "▼"
     roi_display = f"{icon} {roi:.2%}"
 
     with st.container(border=True):
-        # --- MODIFIED LINE ---
-        # Add a 6th column to act as a flexible spacer
         cols = st.columns([2, 4, 3, 2, 2, 1.5])
 
-        # Column 1: Portfolio Name (Ratio: 3)
         cols[0].markdown(f"**{portfolio['name']}**")
 
-        # Columns 2 & 3: Stats (Ratios: 3 and 2)
         cols[1].markdown(
             f"**Current Value:** {format_usd(portfolio['current_value_usd'])}"
         )
         btc_amount = float(portfolio.get("total_btc_amount", 0))
         cols[2].markdown(f"**BTC:** {btc_amount:.8f} ₿")
 
-        # Column 4: ROI Badge (Ratio: 2.5)
         cols[3].markdown(
             f'<div style="background-color:{color}; color:white; padding:4px 10px; border-radius:15px; text-align:center; font-size:14px; font-weight:bold;">'
             f"{roi_display}"
@@ -184,10 +159,6 @@ def show_portfolio_list_metrics(portfolio):
             unsafe_allow_html=True,
         )
 
-        # Column 5: This is our empty spacer column (Ratio: 4). It pushes the button to the right.
-        # No code needed here, it just takes up space.
-
-        # Column 6: Button (Ratio: 1.5)
         if cols[5].button(
             "View", key=f"view_potfolio_{portfolio['id']}", use_container_width=True
         ):
@@ -198,21 +169,16 @@ def show_portfolio_list_metrics(portfolio):
 def show_transaction_list_metrics(token, transaction):
     """A compact row using a colored badge for the ROI."""
 
-    # --- Data & Formatting ---
     roi = float(transaction.get("roi", 0))
     color = "green" if roi > 0 else "red"
     icon = "▲" if roi > 0 else "▼"
     roi_display = f"{icon} {roi:.2%}"
 
     with st.container(border=True):
-        # --- MODIFIED LINE ---
-        # Add a 6th column to act as a flexible spacer
         cols = st.columns([2, 4, 3, 2, 2, 1.5])
 
-        # Column 1: Portfolio Name (Ratio: 3)
         cols[0].markdown(f"{format_timestamp(transaction['timestamp_hour_rounded'])}")
 
-        # Columns 2 & 3: Stats (Ratios: 3 and 2)
         btc_amount = float(transaction.get("btc_amount", 0))
 
         cols[1].markdown(
@@ -220,7 +186,7 @@ def show_transaction_list_metrics(token, transaction):
         )
         btc_amount = float(transaction.get("btc_amount", 0))
         cols[2].markdown(f"**BTC:** {btc_amount:.8f} ₿")
-        # Column 4: ROI Badge (Ratio: 2.5)
+
         cols[3].markdown(
             f'<div style="background-color:{color}; color:white; padding:4px 10px; border-radius:15px; text-align:center; font-size:14px; font-weight:bold;">'
             f"{roi_display}"
@@ -228,10 +194,6 @@ def show_transaction_list_metrics(token, transaction):
             unsafe_allow_html=True,
         )
 
-        # Column 5: This is our empty spacer column (Ratio: 4). It pushes the button to the right.
-        # No code needed here, it just takes up space.
-
-        # Column 6: Button (Ratio: 1.5)
         if cols[5].button(
             "View",
             key=f"view_transaction_{transaction['id']}",
@@ -251,24 +213,24 @@ def get_bitcoin_price(api_key):
             "fsyms": "BTC",
             "tsyms": "USD",
         }
-        
-        # Add the API key to the request if it's provided
+
         if api_key:
             params["api_key"] = api_key
         else:
-            st.warning("CryptoCompare API key is not set. You may hit rate limits.", icon="⚠️")
+            st.warning(
+                "CryptoCompare API key is not set. You may hit rate limits.", icon="⚠️"
+            )
 
         response = requests.get(url, params=params)
-        response.raise_for_status() # Raises an HTTPError for bad responses (4xx or 5xx)
-        
-        # Parse the nested JSON response
+        response.raise_for_status()
+
         data = response.json()["RAW"]["BTC"]["USD"]
-        
+
         price = data["PRICE"]
         change_pct = data["CHANGEPCT24HOUR"]
-        
+
         return price, change_pct
-        
+
     except requests.RequestException as e:
         st.error(f"Error fetching BTC price from CryptoCompare: {e}")
         return None, None

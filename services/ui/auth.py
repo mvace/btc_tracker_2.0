@@ -5,7 +5,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 
 API_URL = st.secrets["API_URL"]
 
-cookies = None  # will be set from main app
+cookies = None
 
 
 def set_cookie_manager(cookie_manager):

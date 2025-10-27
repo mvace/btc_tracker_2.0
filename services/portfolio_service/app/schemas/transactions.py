@@ -67,7 +67,6 @@ class TransactionReadWithMetrics(TransactionRead):
             self.net_result = self.current_value_usd - self.initial_value_usd
             self.roi = self.net_result / self.initial_value_usd
         else:
-            # If there was no initial investment, results are zero
             self.net_result = Decimal("0.0")
             self.roi = Decimal("0.0")
         return self

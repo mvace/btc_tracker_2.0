@@ -8,9 +8,11 @@ from components.timestamp import merged_timestamp
 def create_transaction_form(portfolio_id):
     today = date.today()
     yesterday_date = today - timedelta(days=1)
-    with st.form("create_transaction_form"):
-        tranaction_amount = st.text_input(
-            label="BTC Amount", placeholder="e.g., 0.12345678"
+
+    with st.form("create_transaction_form", enter_to_submit=False):
+        tranaction_amount_str = st.text_input(
+            label="BTC Amount",
+            placeholder="0.12345678",
         )
         transaction_date = st.date_input(
             value=yesterday_date,
@@ -20,29 +22,34 @@ def create_transaction_form(portfolio_id):
         )
         transaction_time = st.time_input("Time")
         submitted = st.form_submit_button("Add Transaction")
-        tranaction_amount = tranaction_amount.replace(",", ".")
-        try:
-            tranaction_amount = Decimal(tranaction_amount)
-            min_val = Decimal("0.00000001")
-            max_val = Decimal("21000000")
 
-            if not (min_val <= tranaction_amount <= max_val):
-                st.error(f"Amount must be between {min_val} and {max_val}.")
-        except:
-            pass
         if submitted:
-            timestamp = merged_timestamp(transaction_date, transaction_time)
+            tranaction_amount_str = tranaction_amount_str.replace(",", ".")
 
-            transaction_data = {
-                "portfolio_id": portfolio_id,
-                "btc_amount": str(tranaction_amount),
-                "timestamp": timestamp,
-            }
-            return transaction_data
+            try:
+                tranaction_amount_decimal = Decimal(tranaction_amount_str)
+                min_val = Decimal("0.00000001")
+                max_val = Decimal("21000000")
+
+                if not (min_val <= tranaction_amount_decimal <= max_val):
+                    st.error(f"Amount must be between {min_val} and {max_val}.")
+                else:
+                    timestamp = merged_timestamp(transaction_date, transaction_time)
+                    transaction_data = {
+                        "portfolio_id": portfolio_id,
+                        "btc_amount": str(tranaction_amount_decimal),
+                        "timestamp": timestamp,
+                    }
+                    return transaction_data
+
+            except Exception as e:
+                st.error(f"Invalid amount. Please enter a valid number.")
+
+    return None
 
 
 def create_portfolio_form():
-    with st.form("create_portfolio_form", clear_on_submit=True):
+    with st.form("create_portfolio_form", clear_on_submit=True, enter_to_submit=False):
         st.subheader("Create New Portfolio")
         portfolio_name = st.text_input("Portfolio Name")
         portfolio_goal = st.text_input("Your investment goal in USD")
