@@ -241,22 +241,37 @@ def show_transaction_list_metrics(token, transaction):
 
 
 @st.cache_data(ttl=1800)
-def get_bitcoin_price():
-    """Fetches the current Bitcoin price and 24h change from CoinGecko."""
+def get_bitcoin_price(api_key):
+    """
+    Fetches the current Bitcoin price and 24h change from CryptoCompare.
+    """
     try:
-        url = "https://api.coingecko.com/api/v3/simple/price"
+        url = "https://min-api.cryptocompare.com/data/pricemultifull"
         params = {
-            "ids": "bitcoin",
-            "vs_currencies": "usd",
-            "include_24hr_change": "true",
+            "fsyms": "BTC",
+            "tsyms": "USD",
         }
+        
+        # Add the API key to the request if it's provided
+        if api_key:
+            params["api_key"] = api_key
+        else:
+            st.warning("CryptoCompare API key is not set. You may hit rate limits.", icon="⚠️")
+
         response = requests.get(url, params=params)
-        response.raise_for_status()
-        data = response.json()["bitcoin"]
-        return data["usd"], data["usd_24h_change"]
+        response.raise_for_status() # Raises an HTTPError for bad responses (4xx or 5xx)
+        
+        # Parse the nested JSON response
+        data = response.json()["RAW"]["BTC"]["USD"]
+        
+        price = data["PRICE"]
+        change_pct = data["CHANGEPCT24HOUR"]
+        
+        return price, change_pct
+        
     except requests.RequestException as e:
-        st.error(f"Error fetching BTC price: {e}")
+        st.error(f"Error fetching BTC price from CryptoCompare: {e}")
         return None, None
-    except (KeyError, TypeError):
-        st.error("Error parsing price data.")
+    except (KeyError, TypeError, ValueError):
+        st.error("Error parsing price data from CryptoCompare.")
         return None, None

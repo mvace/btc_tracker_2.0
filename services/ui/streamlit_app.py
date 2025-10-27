@@ -23,6 +23,8 @@ st.set_page_config(
 st.markdown(font_css, unsafe_allow_html=True)
 
 API_URL = st.secrets["API_URL"]
+CRYPTOCOMPARE_API_KEY = st.secrets["CRYPTOCOMPARE_API_KEY"]
+
 
 # --- COOKIE SETUP ---
 cookies = EncryptedCookieManager(password="my_secret_encryption_password")
@@ -52,7 +54,7 @@ if not jwt_token:
 
 # If user IS logged in, show the main part of the app
 else:
-    price, change = get_bitcoin_price()
+    price, change = get_bitcoin_price(CRYPTOCOMPARE_API_KEY)
     if price is not None and change is not None:
         st.sidebar.metric(
             label="Bitcoin (BTC) Price",
