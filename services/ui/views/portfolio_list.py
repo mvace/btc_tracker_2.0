@@ -17,7 +17,6 @@ def portfolio_list_view(token: str):
         else:
             for portfolio in data:
                 show_portfolio_list_metrics(portfolio)
-
     elif status == 401:
         auth.logout_user()
         st.rerun()
